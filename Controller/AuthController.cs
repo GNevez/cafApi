@@ -15,7 +15,7 @@ namespace cafApi.Controller
         {
             _authService = authService;
         }
-        
+
         [AllowAnonymous]
         [HttpPost("login")]
         public async Task<ActionResult<AuthResponseDto>> Login([FromBody] LoginDto loginDto)
@@ -44,16 +44,22 @@ namespace cafApi.Controller
         }
 
         [HttpPost("validate")]
-        public async Task<ActionResult> ValidateToken([FromBody] string token)
+        public async Task<IActionResult> Validate()
         {
-            if (string.IsNullOrEmpty(token))
-                return BadRequest("Token é obrigatório.");
+            var authHeader = Request.Headers["Authorization"].FirstOrDefault();
+            if (authHeader == null || !authHeader.StartsWith("Bearer "))
+                return Unauthorized("Token não fornecido ou mal formatado.");
 
-            var isValid = await _authService.ValidateTokenAsync(token);
-            if (!isValid)
-                return Unauthorized("Token inválido.");
+            var token = authHeader.Substring("Bearer ".Length).Trim();
 
-            return Ok(new { valid = true });
+            var userData = await _authService.ValidateAndGetDataAsync(token);
+
+            if (userData == null)
+            {
+                return Unauthorized("Token inválido ou expirado.");
+            }
+
+            return Ok(userData);
         }
 
         [HttpPost("logout")]

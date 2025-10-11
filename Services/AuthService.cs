@@ -96,14 +96,14 @@ namespace cafApi.Services
             };
         }
 
-        public async Task<bool> ValidateTokenAsync(string token)
+        public async Task<UserValidationDto?> ValidateAndGetDataAsync(string token)
         {
+            var tokenHandler = new JwtSecurityTokenHandler();
+            var key = Encoding.ASCII.GetBytes(_configuration["Jwt:Key"]!);
+
             try
             {
-                var tokenHandler = new JwtSecurityTokenHandler();
-                var key = Encoding.ASCII.GetBytes(_configuration["Jwt:Key"]!);
-                
-                tokenHandler.ValidateToken(token, new TokenValidationParameters
+                var principal = tokenHandler.ValidateToken(token, new TokenValidationParameters
                 {
                     ValidateIssuerSigningKey = true,
                     IssuerSigningKey = new SymmetricSecurityKey(key),
@@ -115,11 +115,18 @@ namespace cafApi.Services
                     ClockSkew = TimeSpan.Zero
                 }, out SecurityToken validatedToken);
 
-                return true;
+                if (validatedToken == null) return null;
+
+                return new UserValidationDto
+                {
+                    Nome = principal.FindFirst(ClaimTypes.Name)?.Value,
+                    Email = principal.FindFirst(ClaimTypes.Email)?.Value,
+                    Role = principal.FindFirst(ClaimTypes.Role)?.Value
+                };
             }
             catch
             {
-                return false;
+                return null;
             }
         }
 
@@ -142,7 +149,7 @@ namespace cafApi.Services
         {
             var tokenHandler = new JwtSecurityTokenHandler();
             var key = Encoding.ASCII.GetBytes(_configuration["Jwt:Key"]!);
-            
+
             var tokenDescriptor = new SecurityTokenDescriptor
             {
                 Subject = new ClaimsIdentity(new[]

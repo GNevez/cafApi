@@ -25,7 +25,7 @@ namespace cafApi.Middleware
 
             if (string.IsNullOrEmpty(authHeader))
             {
-                var cookieToken = context.Request.Cookies["authToken"]; 
+                var cookieToken = context.Request.Cookies["auth_token"]; 
                 
                 if (!string.IsNullOrEmpty(cookieToken))
                 {

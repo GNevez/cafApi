@@ -6,7 +6,7 @@ namespace cafApi.Services
     {
         Task<AuthResponseDto?> LoginAsync(LoginDto loginDto, HttpContext httpContext);
         Task<AuthResponseDto?> RegisterAsync(RegisterDto registerDto);
-        Task<bool> ValidateTokenAsync(string token);
+        Task<UserValidationDto?> ValidateAndGetDataAsync(string token);
         Task<string?> GetUserRoleAsync(string token);
     }
 }

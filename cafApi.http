@@ -34,6 +34,12 @@ Content-Type: application/json
 
 ###
 
+# Validar token (usa header Authorization)
+POST {{cafApi_HostAddress}}/api/auth/validate
+Authorization: Bearer SEU_TOKEN_AQUI
+
+###
+
 # Logout (remove cookie)
 POST {{cafApi_HostAddress}}/api/auth/logout
 
