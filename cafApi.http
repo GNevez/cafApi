@@ -4,3 +4,133 @@ GET {{cafApi_HostAddress}}/weatherforecast/
 Accept: application/json
 
 ###
+
+# Teste da API de Categorias
+GET {{cafApi_HostAddress}}/api/categoria
+Accept: application/json
+
+###
+
+# Autenticação - Login
+POST {{cafApi_HostAddress}}/api/auth/login
+Content-Type: application/json
+
+{
+  "email": "admin@chaseaflare.com.br",
+  "senha": "REMOVED_DEFAULT_PASSWORD"
+}
+
+###
+
+# Autenticação - Registro
+POST {{cafApi_HostAddress}}/api/auth/register
+Content-Type: application/json
+
+{
+  "nome": "Administrador",
+  "email": "admin@chaseaflare.com.br",
+  "senha": "REMOVED_DEFAULT_PASSWORD"
+}
+
+###
+
+# Logout (remove cookie)
+POST {{cafApi_HostAddress}}/api/auth/logout
+
+###
+
+# Criar uma categoria (requer admin) - COM COOKIE
+# Primeiro faça login acima, depois use esta requisição
+POST {{cafApi_HostAddress}}/api/categoria
+Content-Type: application/json
+
+{
+  "nome": "Óculos de Sol",
+  "slug": "oculos-sol"
+}
+
+###
+
+# Criar uma categoria (requer admin) - COM HEADER (alternativo)
+POST {{cafApi_HostAddress}}/api/categoria
+Content-Type: application/json
+Authorization: Bearer SEU_TOKEN_AQUI
+
+{
+  "nome": "Óculos de Sol",
+  "slug": "oculos-sol"
+}
+
+###
+
+# Teste da API de Produtos
+GET {{cafApi_HostAddress}}/api/produto
+Accept: application/json
+
+###
+
+# Buscar produto por slug
+GET {{cafApi_HostAddress}}/api/produto/slug/oculos-sol-premium
+Accept: application/json
+
+###
+
+# Buscar produtos por categoria
+GET {{cafApi_HostAddress}}/api/produto/categoria/1
+Accept: application/json
+
+###
+
+# Exemplo de POST para criar produtos (usando DTOs)
+POST {{cafApi_HostAddress}}/api/produto
+Content-Type: application/json
+
+[
+  {
+    "nome": "Óculos de Sol Premium",
+    "slug": "oculos-sol-premium",
+    "preco": 299.99,
+    "precoOriginal": 399.99,
+    "isSale": true,
+    "isNew": false,
+    "imagemPrincipal": "https://example.com/oculos-principal.jpg",
+    "imagemHover": "https://example.com/oculos-hover.jpg",
+    "categoriaId": 1,
+    "coresDisponiveis": [
+      {
+        "nome": "Preto",
+        "quantidadeEstoque": 10,
+        "imagens": [
+          {
+            "url": "https://example.com/oculos-preto-1.jpg",
+            "ordem": 1
+          },
+          {
+            "url": "https://example.com/oculos-preto-2.jpg",
+            "ordem": 2
+          }
+        ]
+      },
+      {
+        "nome": "Dourado",
+        "quantidadeEstoque": 5,
+        "imagens": [
+          {
+            "url": "https://example.com/oculos-dourado-1.jpg",
+            "ordem": 1
+          }
+        ]
+      }
+    ]
+  }
+]
+
+###
+
+# Teste CORS - OPTIONS request (simula requisição do frontend)
+OPTIONS {{cafApi_HostAddress}}/api/produto
+Origin: http://localhost:3000
+Access-Control-Request-Method: POST
+Access-Control-Request-Headers: Content-Type
+
+###
