@@ -8,6 +8,13 @@ namespace cafApi.Models.DTOs
         public string Nome { get; set; } = null!;
         
         [Required]
+        public string SKU { get; set; } = null!;
+        
+        public string? CodigoExterno { get; set; }
+        
+        public string? Fabricante { get; set; }
+        
+        [Required]
         public string Slug { get; set; } = null!;
         
         [Required]

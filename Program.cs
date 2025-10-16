@@ -9,6 +9,17 @@ using cafApi.Middleware;
 
 var builder = WebApplication.CreateBuilder(args);
 
+// Configurar WebRootPath se não estiver definido
+if (string.IsNullOrEmpty(builder.Environment.WebRootPath))
+{
+    var wwwrootPath = Path.Combine(builder.Environment.ContentRootPath, "wwwroot");
+    if (!Directory.Exists(wwwrootPath))
+    {
+        Directory.CreateDirectory(wwwrootPath);
+    }
+    builder.Environment.WebRootPath = wwwrootPath;
+}
+
 builder.Services.AddDbContext<ApplicationDbContext>(options =>
     options.UseMySql(
         Environment.GetEnvironmentVariable("CONNECTION_STRING") 
@@ -19,7 +30,10 @@ builder.Services.AddDbContext<ApplicationDbContext>(options =>
 
 builder.Services.AddScoped<IProdutoService, ProdutoService>();
 builder.Services.AddScoped<ICategoriaService, CategoriaService>();
+builder.Services.AddScoped<ICorService, CorService>();
 builder.Services.AddScoped<IAuthService, AuthService>();
+builder.Services.AddScoped<IImageService, ImageService>();
+builder.Services.AddScoped<IProdutoUploadService, ProdutoUploadService>();
 builder.Services.AddScoped<SeedService>();
 
 // 🔐 Configuração JWT
@@ -133,6 +147,9 @@ if (app.Environment.IsDevelopment())
 }
 
 app.UseHttpsRedirection();
+
+// Configurar acesso a arquivos estáticos (uploads)
+app.UseStaticFiles();
 
 // Configurar CORS baseado no ambiente
 if (app.Environment.IsDevelopment())

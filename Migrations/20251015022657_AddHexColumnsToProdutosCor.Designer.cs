@@ -3,6 +3,7 @@ using System;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
 using Microsoft.EntityFrameworkCore.Metadata;
+using Microsoft.EntityFrameworkCore.Migrations;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 using cafApi.Contexts;
 
@@ -11,9 +12,11 @@ using cafApi.Contexts;
 namespace cafApi.Migrations
 {
     [DbContext(typeof(ApplicationDbContext))]
-    partial class ApplicationDbContextModelSnapshot : ModelSnapshot
+    [Migration("20251015022657_AddHexColumnsToProdutosCor")]
+    partial class AddHexColumnsToProdutosCor
     {
-        protected override void BuildModel(ModelBuilder modelBuilder)
+        /// <inheritdoc />
+        protected override void BuildTargetModel(ModelBuilder modelBuilder)
         {
 #pragma warning disable 612, 618
             modelBuilder
@@ -55,13 +58,14 @@ namespace cafApi.Migrations
                         .IsRequired()
                         .HasColumnType("longtext");
 
-                    b.Property<string>("Nome")
-                        .IsRequired()
-                        .HasColumnType("longtext");
+                    b.Property<int?>("ProdutosCorId")
+                        .HasColumnType("int");
 
                     b.HasKey("Id");
 
-                    b.ToTable("Cor");
+                    b.HasIndex("ProdutosCorId");
+
+                    b.ToTable("Cores");
                 });
 
             modelBuilder.Entity("cafApi.Models.Produtos", b =>
@@ -71,9 +75,6 @@ namespace cafApi.Migrations
                         .HasColumnType("int");
 
                     MySqlPropertyBuilderExtensions.UseMySqlIdentityColumn(b.Property<int>("Id"));
-
-                    b.Property<bool>("Active")
-                        .HasColumnType("bit(1)");
 
                     b.Property<int>("CategoriaId")
                         .HasColumnType("int");
@@ -244,6 +245,13 @@ namespace cafApi.Migrations
                     b.ToTable("Usuarios");
                 });
 
+            modelBuilder.Entity("cafApi.Models.Cor", b =>
+                {
+                    b.HasOne("cafApi.Models.ProdutosCor", null)
+                        .WithMany("Cores")
+                        .HasForeignKey("ProdutosCorId");
+                });
+
             modelBuilder.Entity("cafApi.Models.Produtos", b =>
                 {
                     b.HasOne("cafApi.Models.Categoria", "Categoria")
@@ -300,6 +308,8 @@ namespace cafApi.Migrations
 
             modelBuilder.Entity("cafApi.Models.ProdutosCor", b =>
                 {
+                    b.Navigation("Cores");
+
                     b.Navigation("Imagens");
                 });
 

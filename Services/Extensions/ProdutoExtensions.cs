@@ -11,6 +11,9 @@ namespace cafApi.Services.Extensions
             {
                 Id = produto.Id,
                 Nome = produto.Nome,
+                SKU = produto.SKU,
+                CodigoExterno = produto.CodigoExterno,
+                Fabricante = produto.Fabricante,
                 Slug = produto.Slug,
                 Preco = produto.Preco,
                 PrecoOriginal = produto.PrecoOriginal,
@@ -25,6 +28,8 @@ namespace cafApi.Services.Extensions
                     Id = cor.Id,
                     Nome = cor.Nome,
                     QuantidadeEstoque = cor.QuantidadeEstoque,
+                    Hex1 = cor.Hex1,
+                    Hex2 = cor.Hex2,
                     Imagens = cor.Imagens.Select(img => new ProdutoCorImagemResponseDto
                     {
                         Id = img.Id,

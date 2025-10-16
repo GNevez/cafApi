@@ -20,6 +20,19 @@ namespace cafApi.Services
         public async Task<IEnumerable<ProdutoResponseDto>> GetAllAsync()
         {
             var produtos = await _context.Produtos
+                .Where(p => p.Active == true) // 🔹 Apenas produtos ativos
+                .Include(p => p.CoresDisponiveis)
+                    .ThenInclude(c => c.Imagens)
+                .Include(p => p.Categoria)
+                .ToListAsync();
+                
+            return produtos.Select(p => p.ToResponseDto());
+        }
+
+        public async Task<IEnumerable<ProdutoResponseDto>> GetInactiveAsync()
+        {
+            var produtos = await _context.Produtos
+                .Where(p => p.Active == false) // 🔹 Apenas produtos desativados
                 .Include(p => p.CoresDisponiveis)
                     .ThenInclude(c => c.Imagens)
                 .Include(p => p.Categoria)
@@ -31,6 +44,7 @@ namespace cafApi.Services
         public async Task<ProdutoResponseDto?> GetByIdAsync(int id)
         {
             var produto = await _context.Produtos
+                .Where(p => p.Active == true) // 🔹 Apenas produtos ativos
                 .Include(p => p.CoresDisponiveis)
                     .ThenInclude(c => c.Imagens)
                 .Include(p => p.Categoria)
@@ -42,6 +56,7 @@ namespace cafApi.Services
         public async Task<ProdutoResponseDto?> GetBySlugAsync(string slug)
         {
             var produto = await _context.Produtos
+                .Where(p => p.Active == true) // 🔹 Apenas produtos ativos
                 .Include(p => p.CoresDisponiveis)
                     .ThenInclude(c => c.Imagens)
                 .Include(p => p.Categoria)
@@ -53,10 +68,10 @@ namespace cafApi.Services
         public async Task<IEnumerable<ProdutoResponseDto>> GetByCategoriaAsync(int categoriaId)
         {
             var produtos = await _context.Produtos
+                .Where(p => p.Active == true && p.CategoriaId == categoriaId) // 🔹 Apenas produtos ativos
                 .Include(p => p.CoresDisponiveis)
                     .ThenInclude(c => c.Imagens)
                 .Include(p => p.Categoria)
-                .Where(p => p.CategoriaId == categoriaId)
                 .ToListAsync();
                 
             return produtos.Select(p => p.ToResponseDto());
@@ -79,6 +94,9 @@ namespace cafApi.Services
                 var produtoParaSalvar = new Produtos
                 {
                     Nome = produto.Nome,
+                    SKU = produto.SKU,
+                    CodigoExterno = produto.CodigoExterno,
+                    Fabricante = produto.Fabricante,
                     Slug = produto.Slug,
                     Preco = produto.Preco,
                     PrecoOriginal = produto.PrecoOriginal,
@@ -136,6 +154,9 @@ namespace cafApi.Services
                 var produtoParaSalvar = new Produtos
                 {
                     Nome = produtoDto.Nome,
+                    SKU = produtoDto.SKU,
+                    CodigoExterno = produtoDto.CodigoExterno,
+                    Fabricante = produtoDto.Fabricante,
                     Slug = produtoDto.Slug,
                     Preco = produtoDto.Preco,
                     PrecoOriginal = produtoDto.PrecoOriginal,
@@ -187,14 +208,15 @@ namespace cafApi.Services
         {
             var existingProduto = await _context.Produtos
                 .Include(p => p.CoresDisponiveis)
-                    .ThenInclude(c => c.Cores)
-                .Include(p => p.CoresDisponiveis)
                     .ThenInclude(c => c.Imagens)
                 .FirstOrDefaultAsync(p => p.Id == id);
 
             if (existingProduto == null) return false;
 
             existingProduto.Nome = produto.Nome;
+            existingProduto.SKU = produto.SKU;
+            existingProduto.CodigoExterno = produto.CodigoExterno;
+            existingProduto.Fabricante = produto.Fabricante;
             existingProduto.Preco = produto.Preco;
             existingProduto.PrecoOriginal = produto.PrecoOriginal;
             existingProduto.IsSale = produto.IsSale;
@@ -215,6 +237,101 @@ namespace cafApi.Services
             _context.Produtos.Remove(produto);
             await _context.SaveChangesAsync();
             return true;
+        }
+
+        public async Task<bool> DeactivateAsync(int id)
+        {
+            var produto = await _context.Produtos.FindAsync(id);
+            if (produto == null) return false;
+            
+            produto.Active = false; // 🔹 Soft delete - desativar produto
+            await _context.SaveChangesAsync();
+            return true;
+        }
+
+        public async Task<bool> ReactivateAsync(int id)
+        {
+            var produto = await _context.Produtos.FindAsync(id);
+            if (produto == null) return false;
+            
+            produto.Active = true; // 🔹 Reativar produto
+            await _context.SaveChangesAsync();
+            return true;
+        }
+
+        public async Task<bool> DeleteCorAsync(int corId)
+        {
+            var cor = await _context.ProdutosCores.FindAsync(corId);
+            if (cor == null) return false;
+
+            // Remover imagens associadas primeiro
+            var imagens = await _context.ProdutosCorImagens
+                .Where(i => i.ProdutosCorId == corId)
+                .ToListAsync();
+            
+            _context.ProdutosCorImagens.RemoveRange(imagens);
+            
+            // Remover a cor
+            _context.ProdutosCores.Remove(cor);
+            
+            await _context.SaveChangesAsync();
+            return true;
+        }
+
+        public void AddCor(ProdutosCor cor)
+        {
+            _context.ProdutosCores.Add(cor);
+        }
+
+        public void AddImagemCor(ProdutosCorImagem imagemCor)
+        {
+            _context.ProdutosCorImagens.Add(imagemCor);
+        }
+
+        public async Task SaveChangesAsync()
+        {
+            await _context.SaveChangesAsync();
+        }
+
+        public async Task<List<ProdutosCor>> GetCoresByProdutoIdAsync(int produtoId)
+        {
+            return await _context.ProdutosCores
+                .Where(c => c.ProdutosId == produtoId)
+                .Include(c => c.Imagens)
+                .ToListAsync();
+        }
+
+        public async Task<List<ProdutosCorImagem>> GetImagensByCorIdAsync(int corId)
+        {
+            return await _context.ProdutosCorImagens
+                .Where(i => i.ProdutosCorId == corId)
+                .ToListAsync();
+        }
+
+        public async Task<Produtos?> GetBySKUAsync(string sku)
+        {
+            return await _context.Produtos
+                .Where(p => p.Active == true) // 🔹 Apenas produtos ativos
+                .FirstOrDefaultAsync(p => p.SKU == sku);
+        }
+
+        public async Task<Produtos?> GetBySKUIncludingInactiveAsync(string sku)
+        {
+            return await _context.Produtos
+                .FirstOrDefaultAsync(p => p.SKU == sku); // 🔹 Inclui produtos desativados
+        }
+
+        public async Task<Produtos?> GetByCodigoExternoAsync(string codigoExterno)
+        {
+            return await _context.Produtos
+                .Where(p => p.Active == true) // 🔹 Apenas produtos ativos
+                .FirstOrDefaultAsync(p => p.CodigoExterno == codigoExterno);
+        }
+
+        public async Task<Produtos?> GetByCodigoExternoIncludingInactiveAsync(string codigoExterno)
+        {
+            return await _context.Produtos
+                .FirstOrDefaultAsync(p => p.CodigoExterno == codigoExterno); // 🔹 Inclui produtos desativados
         }
     }
 }

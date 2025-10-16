@@ -4,6 +4,9 @@ namespace cafApi.Models.DTOs
     {
         public int Id { get; set; }
         public string Nome { get; set; } = null!;
+        public string SKU { get; set; } = null!;
+        public string? CodigoExterno { get; set; }
+        public string? Fabricante { get; set; }
         public string Slug { get; set; } = null!;
         public decimal Preco { get; set; }
         public decimal? PrecoOriginal { get; set; }
@@ -21,6 +24,8 @@ namespace cafApi.Models.DTOs
         public int Id { get; set; }
         public string Nome { get; set; } = null!;
         public int QuantidadeEstoque { get; set; }
+        public string? Hex1 { get; set; }
+        public string? Hex2 { get; set; }
         public List<ProdutoCorImagemResponseDto> Imagens { get; set; } = new List<ProdutoCorImagemResponseDto>();
     }
 

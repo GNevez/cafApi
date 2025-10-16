@@ -11,6 +11,7 @@ public class ApplicationDbContext : DbContext
     public DbSet<ProdutosCor> ProdutosCores { get; set; }
     public DbSet<ProdutosCorImagem> ProdutosCorImagens { get; set; }
     public DbSet<Categoria> Categorias { get; set; }
+    public DbSet<Cor> Cor { get; set; }
     public DbSet<Usuario> Usuarios { get; set; }
     public DbSet<Role> Roles { get; set; }
 
