@@ -47,6 +47,14 @@ namespace cafApi.Controller
             return Ok(produto);
         }
 
+        [HttpGet("detalhado/{slug}")]
+        public async Task<ActionResult<ProdutoDetalhadoDto>> GetDetalhadoBySlug(string slug)
+        {
+            var produto = await _service.GetBySlugDetalhadoAsync(slug);
+            if (produto == null) return NotFound();
+            return Ok(produto);
+        }
+
         [HttpGet("categoria/{categoriaId}")]
         public async Task<ActionResult<IEnumerable<ProdutoResponseDto>>> GetByCategoria(int categoriaId)
         {

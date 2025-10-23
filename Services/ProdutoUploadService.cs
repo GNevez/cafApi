@@ -62,6 +62,9 @@ namespace cafApi.Services
             var precoOriginalStr = form["precoOriginal"].FirstOrDefault();
             var isSaleStr = form["isSale"].FirstOrDefault();
             var isNewStr = form["isNew"].FirstOrDefault();
+            var descricao = form["descricao"].FirstOrDefault();
+            var maxParcelasStr = form["maxParcelas"].FirstOrDefault();
+            var taxaJurosStr = form["taxaJuros"].FirstOrDefault();
 
             if (string.IsNullOrEmpty(nome))
                 throw new ArgumentException("Nome do produto é obrigatório.");
@@ -83,6 +86,19 @@ namespace cafApi.Services
             bool isSale = bool.TryParse(isSaleStr, out bool isSaleValue) && isSaleValue;
             bool isNew = bool.TryParse(isNewStr, out bool isNewValue) && isNewValue;
 
+            // Processar novos campos
+            int maxParcelas = 12; // Valor padrão
+            if (!string.IsNullOrEmpty(maxParcelasStr) && int.TryParse(maxParcelasStr, out int maxParcelasValue))
+            {
+                maxParcelas = maxParcelasValue;
+            }
+
+            decimal taxaJuros = 0; // Valor padrão
+            if (!string.IsNullOrEmpty(taxaJurosStr) && decimal.TryParse(taxaJurosStr, out decimal taxaJurosValue))
+            {
+                taxaJuros = taxaJurosValue;
+            }
+
             // Atualizar dados do produto
             produtoExistente.Nome = nome;
             produtoExistente.SKU = sku; // Manter o mesmo SKU
@@ -94,6 +110,9 @@ namespace cafApi.Services
             produtoExistente.IsSale = isSale;
             produtoExistente.IsNew = isNew;
             produtoExistente.CategoriaId = categoriaId;
+            produtoExistente.Descricao = string.IsNullOrEmpty(descricao) ? null : descricao;
+            produtoExistente.MaxParcelas = maxParcelas;
+            produtoExistente.TaxaJuros = taxaJuros;
 
             // Processar imagens principais (apenas se fornecidas)
             var imagemPrincipal = form.Files["imagemPrincipal"];
@@ -148,6 +167,9 @@ namespace cafApi.Services
             var precoOriginalStr = form["precoOriginal"].FirstOrDefault();
             var isSaleStr = form["isSale"].FirstOrDefault();
             var isNewStr = form["isNew"].FirstOrDefault();
+            var descricao = form["descricao"].FirstOrDefault();
+            var maxParcelasStr = form["maxParcelas"].FirstOrDefault();
+            var taxaJurosStr = form["taxaJuros"].FirstOrDefault();
 
             if (string.IsNullOrEmpty(nome))
                 throw new ArgumentException("Nome do produto é obrigatório.");
@@ -193,6 +215,19 @@ namespace cafApi.Services
             var imagemHoverPath = await _imageService.SaveImageAsync(imagemHover, "produtos");
 
             // Criar produto
+            // Processar novos campos
+            int maxParcelas = 12; // Valor padrão
+            if (!string.IsNullOrEmpty(maxParcelasStr) && int.TryParse(maxParcelasStr, out int maxParcelasValue))
+            {
+                maxParcelas = maxParcelasValue;
+            }
+
+            decimal taxaJuros = 0; // Valor padrão
+            if (!string.IsNullOrEmpty(taxaJurosStr) && decimal.TryParse(taxaJurosStr, out decimal taxaJurosValue))
+            {
+                taxaJuros = taxaJurosValue;
+            }
+
             var produto = new Produtos
             {
                 Nome = nome,
@@ -206,7 +241,10 @@ namespace cafApi.Services
                 IsNew = isNew,
                 ImagemPrincipal = imagemPrincipalPath,
                 ImagemHover = imagemHoverPath,
-                CategoriaId = categoriaId
+                CategoriaId = categoriaId,
+                Descricao = string.IsNullOrEmpty(descricao) ? null : descricao,
+                MaxParcelas = maxParcelas,
+                TaxaJuros = taxaJuros
             };
 
             // Salvar produto no banco

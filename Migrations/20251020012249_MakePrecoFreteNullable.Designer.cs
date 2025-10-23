@@ -3,6 +3,7 @@ using System;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
 using Microsoft.EntityFrameworkCore.Metadata;
+using Microsoft.EntityFrameworkCore.Migrations;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 using cafApi.Contexts;
 
@@ -11,9 +12,11 @@ using cafApi.Contexts;
 namespace cafApi.Migrations
 {
     [DbContext(typeof(ApplicationDbContext))]
-    partial class ApplicationDbContextModelSnapshot : ModelSnapshot
+    [Migration("20251020012249_MakePrecoFreteNullable")]
+    partial class MakePrecoFreteNullable
     {
-        protected override void BuildModel(ModelBuilder modelBuilder)
+        /// <inheritdoc />
+        protected override void BuildTargetModel(ModelBuilder modelBuilder)
         {
 #pragma warning disable 612, 618
             modelBuilder
@@ -36,9 +39,6 @@ namespace cafApi.Migrations
                     b.Property<int?>("ClienteId")
                         .HasColumnType("int");
 
-                    b.Property<int?>("CupomId")
-                        .HasColumnType("int");
-
                     b.Property<DateTime?>("DataAtualizacao")
                         .HasColumnType("datetime(6)");
 
@@ -55,8 +55,6 @@ namespace cafApi.Migrations
                     b.HasKey("Id");
 
                     b.HasIndex("ClienteId");
-
-                    b.HasIndex("CupomId");
 
                     b.HasIndex("Token")
                         .IsUnique();
@@ -152,167 +150,6 @@ namespace cafApi.Migrations
                     b.HasKey("Id");
 
                     b.ToTable("Cor");
-                });
-
-            modelBuilder.Entity("cafApi.Models.Cupom", b =>
-                {
-                    b.Property<int>("Id")
-                        .ValueGeneratedOnAdd()
-                        .HasColumnType("int")
-                        .HasColumnName("id");
-
-                    MySqlPropertyBuilderExtensions.UseMySqlIdentityColumn(b.Property<int>("Id"));
-
-                    b.Property<bool>("Ativo")
-                        .HasColumnType("bit(1)")
-                        .HasColumnName("ativo");
-
-                    b.Property<string>("Codigo")
-                        .IsRequired()
-                        .HasMaxLength(50)
-                        .HasColumnType("varchar(50)")
-                        .HasColumnName("codigo");
-
-                    b.Property<DateTime?>("DataAtualizacao")
-                        .HasColumnType("datetime(6)")
-                        .HasColumnName("data_atualizacao");
-
-                    b.Property<DateTime>("DataCriacao")
-                        .HasColumnType("datetime(6)")
-                        .HasColumnName("data_criacao");
-
-                    b.Property<DateTime?>("DataExpiracao")
-                        .HasColumnType("datetime(6)")
-                        .HasColumnName("data_expiracao");
-
-                    b.Property<DateTime>("DataInicio")
-                        .HasColumnType("datetime(6)")
-                        .HasColumnName("data_inicio");
-
-                    b.Property<string>("Descricao")
-                        .HasMaxLength(255)
-                        .HasColumnType("varchar(255)")
-                        .HasColumnName("descricao");
-
-                    b.Property<int?>("QuantidadeMaximaUsos")
-                        .HasColumnType("int")
-                        .HasColumnName("quantidade_maxima_usos");
-
-                    b.Property<int>("QuantidadeUsosAtual")
-                        .HasColumnType("int")
-                        .HasColumnName("quantidade_usos_atual");
-
-                    b.Property<string>("TipoDesconto")
-                        .IsRequired()
-                        .HasMaxLength(20)
-                        .HasColumnType("varchar(20)")
-                        .HasColumnName("tipo_desconto");
-
-                    b.Property<int>("UsosPorUsuario")
-                        .HasColumnType("int")
-                        .HasColumnName("uso_por_usuario");
-
-                    b.Property<decimal>("ValorDesconto")
-                        .HasPrecision(10, 2)
-                        .HasColumnType("decimal(10,2)")
-                        .HasColumnName("valor_desconto");
-
-                    b.Property<decimal?>("ValorMaximoDesconto")
-                        .HasPrecision(10, 2)
-                        .HasColumnType("decimal(10,2)")
-                        .HasColumnName("valor_maximo_desconto");
-
-                    b.Property<decimal?>("ValorMinimoCompra")
-                        .HasPrecision(10, 2)
-                        .HasColumnType("decimal(10,2)")
-                        .HasColumnName("valor_minimo_compra");
-
-                    b.HasKey("Id");
-
-                    b.ToTable("cupons");
-                });
-
-            modelBuilder.Entity("cafApi.Models.CupomUso", b =>
-                {
-                    b.Property<int>("Id")
-                        .ValueGeneratedOnAdd()
-                        .HasColumnType("int")
-                        .HasColumnName("id");
-
-                    MySqlPropertyBuilderExtensions.UseMySqlIdentityColumn(b.Property<int>("Id"));
-
-                    b.Property<int>("CupomId")
-                        .HasColumnType("int")
-                        .HasColumnName("cupom_id");
-
-                    b.Property<DateTime>("DataUso")
-                        .HasColumnType("datetime(6)")
-                        .HasColumnName("data_uso");
-
-                    b.Property<int?>("PedidoId")
-                        .HasColumnType("int")
-                        .HasColumnName("pedido_id");
-
-                    b.Property<int?>("UsuarioId")
-                        .HasColumnType("int")
-                        .HasColumnName("usuario_id");
-
-                    b.Property<decimal>("ValorDescontoAplicado")
-                        .HasPrecision(10, 2)
-                        .HasColumnType("decimal(10,2)")
-                        .HasColumnName("valor_desconto_aplicado");
-
-                    b.HasKey("Id");
-
-                    b.HasIndex("CupomId");
-
-                    b.HasIndex("UsuarioId");
-
-                    b.ToTable("cupons_uso");
-                });
-
-            modelBuilder.Entity("cafApi.Models.DescontoQuantidade", b =>
-                {
-                    b.Property<int>("Id")
-                        .ValueGeneratedOnAdd()
-                        .HasColumnType("int")
-                        .HasColumnName("id");
-
-                    MySqlPropertyBuilderExtensions.UseMySqlIdentityColumn(b.Property<int>("Id"));
-
-                    b.Property<bool>("Ativo")
-                        .HasColumnType("bit(1)")
-                        .HasColumnName("ativo");
-
-                    b.Property<DateTime?>("DataAtualizacao")
-                        .HasColumnType("datetime(6)")
-                        .HasColumnName("data_atualizacao");
-
-                    b.Property<DateTime>("DataCriacao")
-                        .HasColumnType("datetime(6)")
-                        .HasColumnName("data_criacao");
-
-                    b.Property<string>("Descricao")
-                        .HasMaxLength(255)
-                        .HasColumnType("varchar(255)")
-                        .HasColumnName("descricao");
-
-                    b.Property<int>("QuantidadeMaxima")
-                        .HasColumnType("int")
-                        .HasColumnName("quantidade_maxima");
-
-                    b.Property<int>("QuantidadeMinima")
-                        .HasColumnType("int")
-                        .HasColumnName("quantidade_minima");
-
-                    b.Property<decimal>("ValorPromocional")
-                        .HasPrecision(10, 2)
-                        .HasColumnType("decimal(10,2)")
-                        .HasColumnName("valor_promocional");
-
-                    b.HasKey("Id");
-
-                    b.ToTable("descontos_quantidade");
                 });
 
             modelBuilder.Entity("cafApi.Models.Endereco", b =>
@@ -428,12 +265,6 @@ namespace cafApi.Migrations
 
                     b.Property<DateTime>("DataPedido")
                         .HasColumnType("datetime(6)");
-
-                    b.Property<decimal>("DescontoCupom")
-                        .HasColumnType("decimal(65,30)");
-
-                    b.Property<decimal>("DescontoPorUnidade")
-                        .HasColumnType("decimal(65,30)");
 
                     b.Property<int>("EnderecoEntregaId")
                         .HasColumnType("int");
@@ -704,31 +535,7 @@ namespace cafApi.Migrations
                         .HasForeignKey("ClienteId")
                         .OnDelete(DeleteBehavior.SetNull);
 
-                    b.HasOne("cafApi.Models.Cupom", "Cupom")
-                        .WithMany()
-                        .HasForeignKey("CupomId")
-                        .OnDelete(DeleteBehavior.SetNull);
-
                     b.Navigation("Cliente");
-
-                    b.Navigation("Cupom");
-                });
-
-            modelBuilder.Entity("cafApi.Models.CupomUso", b =>
-                {
-                    b.HasOne("cafApi.Models.Cupom", "Cupom")
-                        .WithMany("CupomUsos")
-                        .HasForeignKey("CupomId")
-                        .OnDelete(DeleteBehavior.Cascade)
-                        .IsRequired();
-
-                    b.HasOne("cafApi.Models.Usuario", "Usuario")
-                        .WithMany()
-                        .HasForeignKey("UsuarioId");
-
-                    b.Navigation("Cupom");
-
-                    b.Navigation("Usuario");
                 });
 
             modelBuilder.Entity("cafApi.Models.Endereco", b =>
@@ -865,11 +672,6 @@ namespace cafApi.Migrations
                     b.Navigation("Enderecos");
 
                     b.Navigation("Pedidos");
-                });
-
-            modelBuilder.Entity("cafApi.Models.Cupom", b =>
-                {
-                    b.Navigation("CupomUsos");
                 });
 
             modelBuilder.Entity("cafApi.Models.Endereco", b =>

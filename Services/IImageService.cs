@@ -10,5 +10,6 @@ namespace cafApi.Services
         Task<List<string>> SaveImagesAsync(List<IFormFile> files, string folder);
         Task<bool> DeleteImageAsync(string imagePath);
         string GetImageUrl(string imagePath);
+        Task<string> SaveVideoAsync(IFormFile file, string folder, string subfolder);
     }
 }

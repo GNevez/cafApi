@@ -32,8 +32,12 @@ builder.Services.AddScoped<IProdutoService, ProdutoService>();
 builder.Services.AddScoped<ICategoriaService, CategoriaService>();
 builder.Services.AddScoped<ICorService, CorService>();
 builder.Services.AddScoped<IAuthService, AuthService>();
+builder.Services.AddScoped<IUsuarioService, UsuarioService>();
 builder.Services.AddScoped<IImageService, ImageService>();
 builder.Services.AddScoped<IProdutoUploadService, ProdutoUploadService>();
+builder.Services.AddScoped<IVideoService, VideoService>();
+builder.Services.AddScoped<ICartService, CartService>();
+builder.Services.AddScoped<IPedidoService, PedidoService>();
 builder.Services.AddScoped<SeedService>();
 
 // 🔐 Configuração JWT
@@ -60,17 +64,17 @@ builder.Services.AddAuthorization();
 
 builder.Services.AddCors(options =>
 {
-    var devUrl = Environment.GetEnvironmentVariable("FRONTEND_DEVELOPMENT_URL") 
-                 ?? builder.Configuration["Frontend:DevelopmentUrl"] 
-                 ?? "http://localhost:3000";
-                 
+    var devUrls = Environment.GetEnvironmentVariable("FRONTEND_DEVELOPMENT_URLS") 
+                  ?? builder.Configuration["Frontend:DevelopmentUrls"] 
+                  ?? "http://localhost:3000,http://localhost:3001";
+                  
     var prodUrl = Environment.GetEnvironmentVariable("FRONTEND_PRODUCTION_URL") 
                   ?? builder.Configuration["Frontend:ProductionUrl"] 
                   ?? "https://chaseaflare.com.br";
 
     options.AddPolicy("Development", policy =>
     {
-        policy.WithOrigins(devUrl)
+        policy.WithOrigins(devUrls.Split(','))
               .AllowAnyHeader()
               .AllowAnyMethod()
               .AllowCredentials();

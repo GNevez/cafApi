@@ -217,5 +217,54 @@ namespace cafApi.Services
             var baseUrl = _configuration["BaseUrl"] ?? "https://localhost:5006";
             return $"{baseUrl}{imagePath}";
         }
+
+        public async Task<string> SaveVideoAsync(IFormFile file, string folder, string subfolder)
+        {
+            if (file == null || file.Length == 0)
+                throw new ArgumentException("Arquivo de vídeo inválido");
+
+            if (string.IsNullOrEmpty(file.FileName))
+                throw new ArgumentException("Nome do arquivo não pode ser vazio");
+
+            // Validar tipo de arquivo de vídeo
+            var allowedExtensions = new[] { ".mp4", ".avi", ".mov", ".wmv", ".flv", ".webm", ".mkv" };
+            var fileExtension = Path.GetExtension(file.FileName).ToLowerInvariant();
+            
+            if (!allowedExtensions.Contains(fileExtension))
+                throw new ArgumentException("Tipo de arquivo de vídeo não permitido");
+
+            // Validar tamanho (máximo 100MB para vídeos)
+            if (file.Length > 100 * 1024 * 1024)
+                throw new ArgumentException("Arquivo de vídeo muito grande. Máximo 100MB");
+
+            // Determinar o caminho base para uploads
+            string basePath;
+            if (!string.IsNullOrEmpty(_environment.WebRootPath))
+            {
+                basePath = _environment.WebRootPath;
+            }
+            else
+            {
+                // Fallback: usar o diretório atual + wwwroot
+                basePath = Path.Combine(Directory.GetCurrentDirectory(), "wwwroot");
+            }
+
+            // Criar diretório se não existir
+            var uploadsPath = Path.Combine(basePath, "uploads", folder, subfolder);
+            Directory.CreateDirectory(uploadsPath);
+
+            // Gerar nome único para o arquivo
+            var fileName = $"{Guid.NewGuid()}{fileExtension}";
+            var filePath = Path.Combine(uploadsPath, fileName);
+
+            // Salvar arquivo
+            using (var stream = new FileStream(filePath, FileMode.Create))
+            {
+                await file.CopyToAsync(stream);
+            }
+
+            // Retornar URL relativa
+            return $"/uploads/{folder}/{subfolder}/{fileName}";
+        }
     }
 }

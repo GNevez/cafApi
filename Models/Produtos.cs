@@ -18,6 +18,13 @@ namespace cafApi.Models
     public string ImagemPrincipal { get; set; } = null!;
     public string ImagemHover { get; set; } = null!;
 
+    // 🔹 Campos de parcelamento
+    public int MaxParcelas { get; set; } = 12; // Quantidade máxima de parcelas
+    public decimal TaxaJuros { get; set; } = 0; // Taxa de juros por parcela (em decimal, ex: 0.05 = 5%)
+
+    // 🔹 Descrição do produto
+    public string? Descricao { get; set; }
+
     // 🔗 Relacionamentos
     public int CategoriaId { get; set; }
     public Categoria Categoria { get; set; } = null!;

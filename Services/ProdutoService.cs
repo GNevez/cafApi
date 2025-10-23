@@ -65,6 +65,52 @@ namespace cafApi.Services
             return produto?.ToResponseDto();
         }
 
+        public async Task<ProdutoDetalhadoDto?> GetBySlugDetalhadoAsync(string slug)
+        {
+            var produto = await _context.Produtos
+                .Where(p => p.Active == true)
+                .Include(p => p.CoresDisponiveis)
+                    .ThenInclude(c => c.Imagens)
+                .Include(p => p.Categoria)
+                .FirstOrDefaultAsync(p => p.Slug == slug);
+
+            if (produto == null) return null;
+
+            return new ProdutoDetalhadoDto
+            {
+                Id = produto.Id,
+                Nome = produto.Nome,
+                SKU = produto.SKU,
+                CodigoExterno = produto.CodigoExterno,
+                Fabricante = produto.Fabricante,
+                Slug = produto.Slug,
+                Preco = produto.Preco,
+                PrecoOriginal = produto.PrecoOriginal,
+                IsSale = produto.IsSale,
+                IsNew = produto.IsNew,
+                ImagemPrincipal = produto.ImagemPrincipal,
+                ImagemHover = produto.ImagemHover,
+                MaxParcelas = produto.MaxParcelas,
+                TaxaJuros = produto.TaxaJuros,
+                Descricao = produto.Descricao,
+                CategoriaId = produto.CategoriaId,
+                CategoriaNome = produto.Categoria.Nome,
+                CoresDisponiveis = produto.CoresDisponiveis.Select(c => new CorDetalhadaDto
+                {
+                    Id = c.Id,
+                    Nome = c.Nome,
+                    Hex1 = c.Hex1,
+                    Hex2 = c.Hex2,
+                    QuantidadeEstoque = c.QuantidadeEstoque,
+                    Imagens = c.Imagens.Select(i => new ImagemCorDto
+                    {
+                        Id = i.Id,
+                        Url = i.Url
+                    }).ToList()
+                }).ToList()
+            };
+        }
+
         public async Task<IEnumerable<ProdutoResponseDto>> GetByCategoriaAsync(int categoriaId)
         {
             var produtos = await _context.Produtos

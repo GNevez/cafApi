@@ -3,6 +3,7 @@ using System;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
 using Microsoft.EntityFrameworkCore.Metadata;
+using Microsoft.EntityFrameworkCore.Migrations;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 using cafApi.Contexts;
 
@@ -11,9 +12,11 @@ using cafApi.Contexts;
 namespace cafApi.Migrations
 {
     [DbContext(typeof(ApplicationDbContext))]
-    partial class ApplicationDbContextModelSnapshot : ModelSnapshot
+    [Migration("20251022230358_AddDescontosECupons")]
+    partial class AddDescontosECupons
     {
-        protected override void BuildModel(ModelBuilder modelBuilder)
+        /// <inheritdoc />
+        protected override void BuildTargetModel(ModelBuilder modelBuilder)
         {
 #pragma warning disable 612, 618
             modelBuilder
@@ -36,9 +39,6 @@ namespace cafApi.Migrations
                     b.Property<int?>("ClienteId")
                         .HasColumnType("int");
 
-                    b.Property<int?>("CupomId")
-                        .HasColumnType("int");
-
                     b.Property<DateTime?>("DataAtualizacao")
                         .HasColumnType("datetime(6)");
 
@@ -55,8 +55,6 @@ namespace cafApi.Migrations
                     b.HasKey("Id");
 
                     b.HasIndex("ClienteId");
-
-                    b.HasIndex("CupomId");
 
                     b.HasIndex("Token")
                         .IsUnique();
@@ -429,12 +427,6 @@ namespace cafApi.Migrations
                     b.Property<DateTime>("DataPedido")
                         .HasColumnType("datetime(6)");
 
-                    b.Property<decimal>("DescontoCupom")
-                        .HasColumnType("decimal(65,30)");
-
-                    b.Property<decimal>("DescontoPorUnidade")
-                        .HasColumnType("decimal(65,30)");
-
                     b.Property<int>("EnderecoEntregaId")
                         .HasColumnType("int");
 
@@ -704,14 +696,7 @@ namespace cafApi.Migrations
                         .HasForeignKey("ClienteId")
                         .OnDelete(DeleteBehavior.SetNull);
 
-                    b.HasOne("cafApi.Models.Cupom", "Cupom")
-                        .WithMany()
-                        .HasForeignKey("CupomId")
-                        .OnDelete(DeleteBehavior.SetNull);
-
                     b.Navigation("Cliente");
-
-                    b.Navigation("Cupom");
                 });
 
             modelBuilder.Entity("cafApi.Models.CupomUso", b =>

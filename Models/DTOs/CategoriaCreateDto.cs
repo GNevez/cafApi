@@ -7,7 +7,10 @@ namespace cafApi.Models.DTOs
         [Required]
         public string Nome { get; set; } = null!;
         
-        [Required]
-        public string Slug { get; set; } = null!;
+        public string? Banner { get; set; }
+        
+        public string? Titulo { get; set; }
+        
+        public string? Mensagem { get; set; }
     }
 }

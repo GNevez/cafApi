@@ -14,15 +14,24 @@ public class ApplicationDbContext : DbContext
     public DbSet<Cor> Cor { get; set; }
     public DbSet<Usuario> Usuarios { get; set; }
     public DbSet<Role> Roles { get; set; }
+    public DbSet<Video> Videos { get; set; }
+    public DbSet<Cliente> Clientes { get; set; }
+    public DbSet<Carrinho> Carrinhos { get; set; }
+    public DbSet<ItemCarrinho> ItensCarrinho { get; set; }
+    public DbSet<Pedido> Pedidos { get; set; }
+    public DbSet<Endereco> Enderecos { get; set; }
+    public DbSet<DescontoQuantidade> DescontosQuantidade { get; set; }
+    public DbSet<Cupom> Cupons { get; set; }
+    public DbSet<CupomUso> CuponsUso { get; set; }
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
         base.OnModelCreating(modelBuilder);
 
-        // 🔹 Oculos → Categoria
+        // 🔹 Produtos → Categoria
         modelBuilder.Entity<Produtos>()
             .HasOne(o => o.Categoria)
-            .WithMany(c => c.Oculos)
+            .WithMany()
             .HasForeignKey(o => o.CategoriaId)
             .OnDelete(DeleteBehavior.Restrict);
 
@@ -47,6 +56,13 @@ public class ApplicationDbContext : DbContext
             .HasForeignKey(u => u.RoleId)
             .OnDelete(DeleteBehavior.Restrict);
 
+        // 🔹 Video → Categoria
+        modelBuilder.Entity<Video>()
+            .HasOne(v => v.Categoria)
+            .WithMany()
+            .HasForeignKey(v => v.CategoriaId)
+            .OnDelete(DeleteBehavior.Restrict);
+
         // 🔹 Configurações de índices únicos
         modelBuilder.Entity<Usuario>()
             .HasIndex(u => u.Email)
@@ -64,5 +80,77 @@ public class ApplicationDbContext : DbContext
         modelBuilder.Entity<Produtos>()
             .Property(p => p.PrecoOriginal)
             .HasPrecision(10, 2);
+
+        modelBuilder.Entity<Produtos>()
+            .Property(p => p.TaxaJuros)
+            .HasPrecision(5, 4); // Ex: 0.1234 = 12.34%
+
+        // 🔹 Cliente → Carrinhos
+        modelBuilder.Entity<Cliente>()
+            .HasMany(c => c.Carrinhos)
+            .WithOne(c => c.Cliente)
+            .HasForeignKey(c => c.ClienteId)
+            .OnDelete(DeleteBehavior.SetNull);
+
+        // 🔹 Carrinho → ItensCarrinho
+        modelBuilder.Entity<Carrinho>()
+            .HasMany(c => c.Itens)
+            .WithOne(i => i.Carrinho)
+            .HasForeignKey(i => i.CarrinhoId)
+            .OnDelete(DeleteBehavior.Cascade);
+
+        // 🔹 ItemCarrinho → Produto
+        modelBuilder.Entity<ItemCarrinho>()
+            .HasOne(i => i.Produto)
+            .WithMany()
+            .HasForeignKey(i => i.ProdutoId)
+            .OnDelete(DeleteBehavior.Restrict);
+
+        // 🔹 ItemCarrinho → Cor
+        modelBuilder.Entity<ItemCarrinho>()
+            .HasOne(i => i.Cor)
+            .WithMany()
+            .HasForeignKey(i => i.CorId)
+            .OnDelete(DeleteBehavior.Restrict);
+
+        // 🔹 Índice único para token do carrinho
+        modelBuilder.Entity<Carrinho>()
+            .HasIndex(c => c.Token)
+            .IsUnique();
+
+        // 🔹 Cliente → Enderecos
+        modelBuilder.Entity<Cliente>()
+            .HasMany(c => c.Enderecos)
+            .WithOne(e => e.Cliente)
+            .HasForeignKey(e => e.ClienteId)
+            .OnDelete(DeleteBehavior.Cascade);
+
+        // 🔹 Cliente → Pedidos
+        modelBuilder.Entity<Cliente>()
+            .HasMany(c => c.Pedidos)
+            .WithOne(p => p.Cliente)
+            .HasForeignKey(p => p.ClienteId)
+            .OnDelete(DeleteBehavior.Restrict);
+
+        // 🔹 Carrinho → Pedidos
+        modelBuilder.Entity<Carrinho>()
+            .HasMany(c => c.Pedidos)
+            .WithOne(p => p.Carrinho)
+            .HasForeignKey(p => p.CarrinhoId)
+            .OnDelete(DeleteBehavior.Restrict);
+
+        // 🔹 Endereco → Pedidos
+        modelBuilder.Entity<Endereco>()
+            .HasMany(e => e.Pedidos)
+            .WithOne(p => p.EnderecoEntrega)
+            .HasForeignKey(p => p.EnderecoEntregaId)
+            .OnDelete(DeleteBehavior.Restrict);
+
+        // 🔹 Carrinho → Cupom
+        modelBuilder.Entity<Carrinho>()
+            .HasOne(c => c.Cupom)
+            .WithMany()
+            .HasForeignKey(c => c.CupomId)
+            .OnDelete(DeleteBehavior.SetNull);
     }
 }

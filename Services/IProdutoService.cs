@@ -11,6 +11,7 @@ namespace cafApi.Services
         Task<IEnumerable<ProdutoResponseDto>> GetInactiveAsync(); // 🔹 Listar produtos desativados
         Task<ProdutoResponseDto?> GetByIdAsync(int id);
         Task<ProdutoResponseDto?> GetBySlugAsync(string slug);
+        Task<ProdutoDetalhadoDto?> GetBySlugDetalhadoAsync(string slug);
         Task<IEnumerable<ProdutoResponseDto>> GetByCategoriaAsync(int categoriaId);
         Task<Produtos> CreateAsync(Produtos produto);
         Task<List<Produtos>> CreateManyAsync(List<Produtos> produtos);
