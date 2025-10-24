@@ -31,7 +31,7 @@ namespace cafApi.Controller
             return Ok(produtos);
         }
 
-        [HttpGet("{id}")]
+        [HttpGet("{id:int}")]
         public async Task<ActionResult<ProdutoResponseDto>> Get(int id)
         {
             var produto = await _service.GetByIdAsync(id);
@@ -55,11 +55,24 @@ namespace cafApi.Controller
             return Ok(produto);
         }
 
-        [HttpGet("categoria/{categoriaId}")]
+        [HttpGet("categoria/{categoriaId:int}")]
         public async Task<ActionResult<IEnumerable<ProdutoResponseDto>>> GetByCategoria(int categoriaId)
         {
             var produtos = await _service.GetByCategoriaAsync(categoriaId);
             return Ok(produtos);
+        }
+
+        [HttpGet("search")]
+        public async Task<ActionResult<IEnumerable<ProdutoSearchDto>>> Search([FromQuery] string q, [FromQuery] int limit = 8)
+        {
+            if (string.IsNullOrWhiteSpace(q) || q.Trim().Length < 2)
+            {
+                return Ok(Enumerable.Empty<ProdutoSearchDto>());
+            }
+
+            limit = Math.Clamp(limit, 1, 20);
+            var resultados = await _service.SearchAsync(q, limit);
+            return Ok(resultados);
         }
 
         [HttpGet("validate/sku/{sku}")]

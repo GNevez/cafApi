@@ -24,6 +24,7 @@ public class ItemCarrinhoDto
     
     // Informações do produto
     public string ProdutoNome { get; set; } = string.Empty;
+    public string ProdutoSlug { get; set; } = string.Empty;
     public string ProdutoSKU { get; set; } = string.Empty;
     public decimal ProdutoPreco { get; set; }
     public string ProdutoImagem { get; set; } = string.Empty;

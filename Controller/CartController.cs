@@ -20,9 +20,8 @@ public class CartController : ControllerBase
     {
         var cartToken = Request.Cookies["cart_token"];
         var cart = await _cartService.GetOrCreateCartAsync(cartToken);
-        
-        // Definir cookie se for um novo carrinho
-        if (string.IsNullOrEmpty(cartToken))
+
+        if (string.IsNullOrEmpty(cartToken) || cart.Token != cartToken)
         {
             SetCartCookie(cart.Token);
         }
@@ -37,9 +36,9 @@ public class CartController : ControllerBase
         {
             var cartToken = Request.Cookies["cart_token"];
             var cart = await _cartService.AddItemAsync(cartToken, item);
-            
-            // Definir cookie se for um novo carrinho
-            if (string.IsNullOrEmpty(cartToken))
+
+            // Definir/atualizar cookie se for um novo carrinho ou se o token mudou
+            if (string.IsNullOrEmpty(cartToken) || cart.Token != cartToken)
             {
                 SetCartCookie(cart.Token);
             }
@@ -65,6 +64,10 @@ public class CartController : ControllerBase
         }
 
         var cart = await _cartService.UpdateItemQuantityAsync(cartToken, item);
+        if (cart.Token != cartToken)
+        {
+            SetCartCookie(cart.Token);
+        }
         return Ok(cart);
     }
 
@@ -79,6 +82,10 @@ public class CartController : ControllerBase
         }
 
         var cart = await _cartService.RemoveItemAsync(cartToken, itemId);
+        if (cart.Token != cartToken)
+        {
+            SetCartCookie(cart.Token);
+        }
         return Ok(cart);
     }
 
@@ -93,6 +100,10 @@ public class CartController : ControllerBase
         }
 
         var cart = await _cartService.ClearCartAsync(cartToken);
+        if (cart.Token != cartToken)
+        {
+            SetCartCookie(cart.Token);
+        }
         return Ok(cart);
     }
 
@@ -116,7 +127,7 @@ public class CartController : ControllerBase
         try
         {
             var cart = await _cartService.ApplyCouponAsync(cartToken, request.Codigo.Trim());
-            if (string.IsNullOrEmpty(cartToken))
+            if (string.IsNullOrEmpty(cartToken) || cart.Token != cartToken)
             {
                 SetCartCookie(cart.Token);
             }
@@ -138,6 +149,10 @@ public class CartController : ControllerBase
     {
         var cartToken = Request.Cookies["cart_token"];
         var cart = await _cartService.RemoveCouponAsync(cartToken);
+        if (string.IsNullOrEmpty(cartToken) || cart.Token != cartToken)
+        {
+            SetCartCookie(cart.Token);
+        }
         return Ok(cart);
     }
     

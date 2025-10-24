@@ -13,6 +13,7 @@ namespace cafApi.Services
         Task<ProdutoResponseDto?> GetBySlugAsync(string slug);
         Task<ProdutoDetalhadoDto?> GetBySlugDetalhadoAsync(string slug);
         Task<IEnumerable<ProdutoResponseDto>> GetByCategoriaAsync(int categoriaId);
+        Task<IEnumerable<ProdutoSearchDto>> SearchAsync(string query, int limit = 8);
         Task<Produtos> CreateAsync(Produtos produto);
         Task<List<Produtos>> CreateManyAsync(List<Produtos> produtos);
         Task<List<Produtos>> CreateManyFromDtoAsync(List<ProdutoCreateDto> produtosDto);

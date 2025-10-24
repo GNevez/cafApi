@@ -16,6 +16,7 @@ namespace cafApi.Models.DTOs
         public string? CodigoRastreamento { get; set; }
         public string MetodoPagamento { get; set; } = null!;
         public string? Observacoes { get; set; }
+        public string? MotivoCancelamento { get; set; }
         public EnderecoDto EnderecoEntrega { get; set; } = null!;
         public List<ItemPedidoDto> Itens { get; set; } = new List<ItemPedidoDto>();
     }
@@ -66,6 +67,7 @@ namespace cafApi.Models.DTOs
         public string? Observacoes { get; set; }
         public decimal? DescontoPorUnidade { get; set; }
         public decimal? DescontoCupom { get; set; }
+        public bool? AtualizarCliente { get; set; }
     }
 
     public class AtualizarStatusPedidoDto
@@ -73,5 +75,6 @@ namespace cafApi.Models.DTOs
         public StatusPedido Status { get; set; }
         public string? CodigoRastreamento { get; set; }
         public string? Observacoes { get; set; }
+        public string? MotivoCancelamento { get; set; }
     }
 }

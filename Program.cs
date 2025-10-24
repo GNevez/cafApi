@@ -150,7 +150,11 @@ if (app.Environment.IsDevelopment())
     app.UseSwaggerUI();
 }
 
-app.UseHttpsRedirection();
+// Em desenvolvimento, mantenha HTTP para evitar problemas de cookie Secure e mismatches de esquema
+if (!app.Environment.IsDevelopment())
+{
+    app.UseHttpsRedirection();
+}
 
 // Configurar acesso a arquivos estáticos (uploads)
 app.UseStaticFiles();

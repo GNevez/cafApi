@@ -216,6 +216,7 @@ public class CartService : ICartService
                 Quantidade = i.Quantidade,
                 DataAdicao = i.DataAdicao,
                 ProdutoNome = i.Produto.Nome,
+                ProdutoSlug = i.Produto.Slug,
                 ProdutoSKU = i.Produto.SKU,
                 ProdutoPreco = i.Produto.Preco,
                 ProdutoImagem = i.Produto.ImagemPrincipal,

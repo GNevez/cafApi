@@ -34,9 +34,29 @@ namespace cafApi.Services
             return await MapPedidoToDto(pedido);
         }
 
-        public async Task<List<PedidoDto>> GetAllAsync()
+        public async Task<(List<PedidoDto> pedidos, int totalCount)> GetAllAsync(int pageNumber, int pageSize)
         {
-            var pedidos = await _context.Pedidos
+            var baseQuery = _context.Pedidos
+                .AsNoTracking()
+                .OrderByDescending(p => p.DataPedido)
+                .ThenByDescending(p => p.Id); // desempate estável
+
+            var totalCount = await baseQuery.CountAsync();
+
+            var pagedIds = await baseQuery
+                .Select(p => p.Id)
+                .Skip((pageNumber - 1) * pageSize)
+                .Take(pageSize)
+                .ToListAsync();
+
+            if (pagedIds.Count == 0)
+            {
+                return (new List<PedidoDto>(), totalCount);
+            }
+
+            var pedidosPage = await _context.Pedidos
+                .AsNoTracking()
+                .Where(p => pagedIds.Contains(p.Id))
                 .Include(p => p.Cliente)
                 .Include(p => p.EnderecoEntrega)
                 .Include(p => p.Carrinho)
@@ -45,16 +65,20 @@ namespace cafApi.Services
                 .Include(p => p.Carrinho)
                     .ThenInclude(c => c.Itens)
                         .ThenInclude(i => i.Cor)
-                .OrderByDescending(p => p.DataPedido)
                 .ToListAsync();
 
+            // Reordenar para respeitar a ordem de pagedIds
+            pedidosPage = pedidosPage
+                .OrderBy(p => pagedIds.IndexOf(p.Id))
+                .ToList();
+
             var pedidosDto = new List<PedidoDto>();
-            foreach (var pedido in pedidos)
+            foreach (var pedido in pedidosPage)
             {
                 pedidosDto.Add(await MapPedidoToDto(pedido));
             }
 
-            return pedidosDto;
+            return (pedidosDto, totalCount);
         }
 
         public async Task<List<PedidoDto>> GetByClienteIdAsync(int clienteId)
@@ -81,6 +105,54 @@ namespace cafApi.Services
             return pedidosDto;
         }
 
+        public async Task<(List<PedidoDto> pedidos, int totalCount)> GetByStatusAsync(StatusPedido status, int pageNumber, int pageSize)
+        {
+            var baseQuery = _context.Pedidos
+                .AsNoTracking()
+                .Where(p => p.Status == status)
+                .OrderByDescending(p => p.DataPedido)
+                .ThenByDescending(p => p.Id); // desempate estável
+
+            var totalCount = await baseQuery.CountAsync();
+
+            var pagedIds = await baseQuery
+                .Select(p => p.Id)
+                .Skip((pageNumber - 1) * pageSize)
+                .Take(pageSize)
+                .ToListAsync();
+
+            if (pagedIds.Count == 0)
+            {
+                return (new List<PedidoDto>(), totalCount);
+            }
+
+            var pedidosPage = await _context.Pedidos
+                .AsNoTracking()
+                .Where(p => pagedIds.Contains(p.Id))
+                .Include(p => p.Cliente)
+                .Include(p => p.EnderecoEntrega)
+                .Include(p => p.Carrinho)
+                    .ThenInclude(c => c.Itens)
+                        .ThenInclude(i => i.Produto)
+                .Include(p => p.Carrinho)
+                    .ThenInclude(c => c.Itens)
+                        .ThenInclude(i => i.Cor)
+                .ToListAsync();
+
+            // Reordenar para respeitar a ordem de pagedIds
+            pedidosPage = pedidosPage
+                .OrderBy(p => pagedIds.IndexOf(p.Id))
+                .ToList();
+
+            var pedidosDto = new List<PedidoDto>();
+            foreach (var pedido in pedidosPage)
+            {
+                pedidosDto.Add(await MapPedidoToDto(pedido));
+            }
+
+            return (pedidosDto, totalCount);
+        }
+
         public async Task<PedidoDto> CreateAsync(CriarPedidoDto criarPedidoDto, string cartToken)
         {
             // Buscar carrinho
@@ -98,22 +170,48 @@ namespace cafApi.Services
             if (carrinho.Itens.Count == 0)
                 throw new InvalidOperationException("Carrinho está vazio");
 
-            // Buscar ou criar cliente
-            var cliente = await _context.Clientes
-                .FirstOrDefaultAsync(c => c.Email == criarPedidoDto.Email);
+            // Buscar cliente por CPF (se fornecido) ou email
+            Cliente? cliente = null;
+            string? cpfLimpo = null;
+            if (!string.IsNullOrEmpty(criarPedidoDto.Cpf))
+            {
+                cpfLimpo = criarPedidoDto.Cpf.Replace(".", "").Replace("-", "").Trim();
+                cliente = await _context.Clientes
+                    .FirstOrDefaultAsync(c => c.Cpf == cpfLimpo && c.Ativo);
+            }
 
             if (cliente == null)
             {
+                cliente = await _context.Clientes
+                    .FirstOrDefaultAsync(c => c.Email == criarPedidoDto.Email && c.Ativo);
+            }
+
+            if (cliente == null)
+            {
+                // Criar novo cliente
                 cliente = new Cliente
                 {
                     Nome = criarPedidoDto.Nome,
                     Email = criarPedidoDto.Email,
                     Telefone = criarPedidoDto.Telefone,
-                    Cpf = criarPedidoDto.Cpf,
+                    Cpf = cpfLimpo, // Salvar CPF sem formatação
                     DataCriacao = DateTime.UtcNow,
                     Ativo = true
                 };
                 _context.Clientes.Add(cliente);
+                await _context.SaveChangesAsync();
+            }
+            else if (criarPedidoDto.AtualizarCliente ?? false)
+            {
+                // Atualizar dados do cliente existente
+                cliente.Nome = criarPedidoDto.Nome;
+                cliente.Email = criarPedidoDto.Email;
+                cliente.Telefone = criarPedidoDto.Telefone;
+                if (!string.IsNullOrEmpty(cpfLimpo))
+                {
+                    cliente.Cpf = cpfLimpo; // Salvar CPF sem formatação
+                }
+                cliente.DataAtualizacao = DateTime.UtcNow;
                 await _context.SaveChangesAsync();
             }
 
@@ -145,7 +243,7 @@ namespace cafApi.Services
                 ClienteId = cliente.Id,
                 CarrinhoId = carrinho.Id,
                 EnderecoEntregaId = endereco.Id,
-                Status = StatusPedido.Pendente,
+                Status = StatusPedido.AguardandoConfirmacao,
                 PrecoFrete = criarPedidoDto.PrecoFrete,
                 TotalPedido = totalPedido,
                 DescontoPorUnidade = criarPedidoDto.DescontoPorUnidade ?? 0m,
@@ -175,6 +273,7 @@ namespace cafApi.Services
             pedido.Status = updateDto.Status;
             pedido.CodigoRastreamento = updateDto.CodigoRastreamento;
             pedido.Observacoes = updateDto.Observacoes;
+            pedido.MotivoCancelamento = updateDto.MotivoCancelamento;
             pedido.DataAtualizacao = DateTime.UtcNow;
 
             await _context.SaveChangesAsync();
@@ -225,6 +324,7 @@ namespace cafApi.Services
                 CodigoRastreamento = pedido.CodigoRastreamento,
                 MetodoPagamento = pedido.MetodoPagamento,
                 Observacoes = pedido.Observacoes,
+                MotivoCancelamento = pedido.MotivoCancelamento,
                 EnderecoEntrega = new EnderecoDto
                 {
                     Id = pedido.EnderecoEntrega.Id,

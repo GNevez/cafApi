@@ -1,3 +1,4 @@
+using cafApi.Models;
 using cafApi.Models.DTOs;
 using cafApi.Services;
 using Microsoft.AspNetCore.Mvc;
@@ -16,12 +17,25 @@ public class PedidoController : ControllerBase
     }
 
     [HttpGet]
-    public async Task<ActionResult<List<PedidoDto>>> GetAll()
+    public async Task<ActionResult<object>> GetAll([FromQuery] int pageNumber = 1, [FromQuery] int pageSize = 7)
     {
         try
         {
-            var pedidos = await _pedidoService.GetAllAsync();
-            return Ok(pedidos);
+            if (pageNumber < 1) pageNumber = 1;
+            if (pageSize < 1 || pageSize > 100) pageSize = 7;
+
+            var (pedidos, totalCount) = await _pedidoService.GetAllAsync(pageNumber, pageSize);
+
+            var response = new
+            {
+                items = pedidos,
+                totalCount = totalCount,
+                pageNumber = pageNumber,
+                pageSize = pageSize,
+                totalPages = (int)Math.Ceiling(totalCount / (double)pageSize)
+            };
+
+            return Ok(response);
         }
         catch (Exception ex)
         {
@@ -29,7 +43,7 @@ public class PedidoController : ControllerBase
         }
     }
 
-    [HttpGet("{id}")]
+    [HttpGet("{id:int}")]
     public async Task<ActionResult<PedidoDto>> GetById(int id)
     {
         try
@@ -46,7 +60,7 @@ public class PedidoController : ControllerBase
         }
     }
 
-    [HttpGet("cliente/{clienteId}")]
+    [HttpGet("cliente/{clienteId:int}")]
     public async Task<ActionResult<List<PedidoDto>>> GetByClienteId(int clienteId)
     {
         try
@@ -60,7 +74,39 @@ public class PedidoController : ControllerBase
         }
     }
 
-    [HttpPut("{id}/status")]
+    [HttpGet("status/{status:int}")]
+    public async Task<ActionResult<object>> GetByStatus(int status, [FromQuery] int pageNumber = 1, [FromQuery] int pageSize = 7)
+    {
+        try
+        {
+            if (!Enum.IsDefined(typeof(StatusPedido), status))
+            {
+                return BadRequest("Status inválido");
+            }
+
+            if (pageNumber < 1) pageNumber = 1;
+            if (pageSize < 1 || pageSize > 100) pageSize = 7;
+
+            var (pedidos, totalCount) = await _pedidoService.GetByStatusAsync((StatusPedido)status, pageNumber, pageSize);
+
+            var response = new
+            {
+                items = pedidos,
+                totalCount = totalCount,
+                pageNumber = pageNumber,
+                pageSize = pageSize,
+                totalPages = (int)Math.Ceiling(totalCount / (double)pageSize)
+            };
+
+            return Ok(response);
+        }
+        catch (Exception ex)
+        {
+            return StatusCode(500, $"Erro interno do servidor: {ex.Message}");
+        }
+    }
+
+    [HttpPut("{id:int}/status")]
     public async Task<ActionResult<PedidoDto>> UpdateStatus(int id, [FromBody] AtualizarStatusPedidoDto updateDto)
     {
         try
@@ -77,7 +123,7 @@ public class PedidoController : ControllerBase
         }
     }
 
-    [HttpDelete("{id}")]
+    [HttpDelete("{id:int}")]
     public async Task<ActionResult> Delete(int id)
     {
         try

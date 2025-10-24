@@ -17,6 +17,33 @@ namespace cafApi.Services
             _context = context;
         }
 
+        public async Task<IEnumerable<ProdutoSearchDto>> SearchAsync(string query, int limit = 8)
+        {
+            if (string.IsNullOrWhiteSpace(query))
+            {
+                return Enumerable.Empty<ProdutoSearchDto>();
+            }
+
+            var q = query.Trim();
+
+            var produtos = await _context.Produtos
+                .AsNoTracking()
+                .Where(p => p.Active == true && EF.Functions.Like(p.Nome, $"%{q}%"))
+                .OrderBy(p => p.Nome)
+                .Select(p => new ProdutoSearchDto
+                {
+                    Id = p.Id,
+                    Nome = p.Nome,
+                    Slug = p.Slug,
+                    Preco = p.Preco,
+                    ImagemPrincipal = p.ImagemPrincipal
+                })
+                .Take(limit)
+                .ToListAsync();
+
+            return produtos;
+        }
+
         public async Task<IEnumerable<ProdutoResponseDto>> GetAllAsync()
         {
             var produtos = await _context.Produtos
