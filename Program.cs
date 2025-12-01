@@ -38,7 +38,12 @@ builder.Services.AddScoped<IProdutoUploadService, ProdutoUploadService>();
 builder.Services.AddScoped<IVideoService, VideoService>();
 builder.Services.AddScoped<ICartService, CartService>();
 builder.Services.AddScoped<IPedidoService, PedidoService>();
+builder.Services.AddScoped<ITransacaoService, TransacaoService>();
+builder.Services.AddScoped<IDashboardService, DashboardService>();
+builder.Services.AddScoped<IPagarmeService, PagarmeService>();
+builder.Services.AddSingleton<IActiveClientsTracker, ActiveClientsTracker>();
 builder.Services.AddScoped<SeedService>();
+builder.Services.AddHttpClient(); // Necessário para PagarmeService
 
 // 🔐 Configuração JWT
 builder.Services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)

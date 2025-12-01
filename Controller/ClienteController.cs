@@ -17,12 +17,21 @@ public class ClienteController : ControllerBase
     }
 
     [HttpGet]
-    public async Task<ActionResult<List<ClienteDto>>> GetAll()
+    public async Task<ActionResult<List<ClienteDto>>> GetAll([FromQuery] bool? ativo)
     {
         try
         {
-            var clientes = await _context.Clientes
-                .Where(c => c.Ativo)
+            var query = _context.Clientes.AsQueryable();
+            if (ativo.HasValue)
+            {
+                query = query.Where(c => c.Ativo == ativo.Value);
+            }
+            else
+            {
+                query = query.Where(c => c.Ativo);
+            }
+
+            var clientes = await query
                 .Select(c => new ClienteDto
                 {
                     Id = c.Id,
@@ -38,6 +47,31 @@ public class ClienteController : ControllerBase
                 .ToListAsync();
 
             return Ok(clientes);
+        }
+        catch (Exception ex)
+        {
+            return StatusCode(500, $"Erro interno do servidor: {ex.Message}");
+        }
+    }
+
+    [HttpPut("{id}/ativo")]
+    public async Task<ActionResult> SetAtivo(int id, [FromBody] SetAtivoDto dto)
+    {
+        try
+        {
+            var cliente = await _context.Clientes.FindAsync(id);
+            if (cliente == null) return NotFound("Cliente não encontrado");
+
+            if (dto == null)
+            {
+                return BadRequest("Payload inválido");
+            }
+
+            cliente.Ativo = dto.Ativo;
+            cliente.DataAtualizacao = DateTime.UtcNow;
+            await _context.SaveChangesAsync();
+
+            return Ok(new { ativo = cliente.Ativo });
         }
         catch (Exception ex)
         {
@@ -127,5 +161,11 @@ public class ClienteDto
     public DateTime DataCriacao { get; set; }
     public DateTime? DataAtualizacao { get; set; }
     public int TotalPedidos { get; set; }
+}
+
+public class SetAtivoDto
+{
+    // Uso PascalCase para compatibilidade do System.Text.Json; JSON "ativo" será mapeado para Ativo
+    public bool Ativo { get; set; }
 }
 

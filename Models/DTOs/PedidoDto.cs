@@ -3,14 +3,16 @@ namespace cafApi.Models.DTOs
     public class PedidoDto
     {
         public int Id { get; set; }
+        public string CodigoPedido { get; set; } = null!; // UUID para identificação externa
         public int ClienteId { get; set; }
         public string ClienteNome { get; set; } = null!;
         public string ClienteEmail { get; set; } = null!;
+        public string? ClienteTelefone { get; set; } // Snapshot do telefone
         public StatusPedido Status { get; set; }
         public decimal? PrecoFrete { get; set; }
-    public decimal TotalPedido { get; set; } // bruto, sem descontos
-    public decimal DescontoPorUnidade { get; set; }
-    public decimal DescontoCupom { get; set; }
+        public decimal TotalPedido { get; set; } // total final do pedido (inclui frete e descontos aplicados)
+        public decimal DescontoPorUnidade { get; set; }
+        public decimal DescontoCupom { get; set; }
         public DateTime DataPedido { get; set; }
         public DateTime? DataAtualizacao { get; set; }
         public string? CodigoRastreamento { get; set; }
@@ -64,10 +66,16 @@ namespace cafApi.Models.DTOs
         public string Estado { get; set; } = null!;
         public string MetodoPagamento { get; set; } = null!;
         public decimal? PrecoFrete { get; set; }
+        // Valor total calculado no frontend e enviado para validação
+        public decimal? TotalEnviado { get; set; }
+        // Quantidade de parcelas selecionada no frontend (1 = à vista)
+        public int? ParcelasNum { get; set; }
         public string? Observacoes { get; set; }
         public decimal? DescontoPorUnidade { get; set; }
         public decimal? DescontoCupom { get; set; }
         public bool? AtualizarCliente { get; set; }
+        // Token do cartão gerado pelo frontend (Pagar.me card tokenization)
+        public string? CardToken { get; set; }
     }
 
     public class AtualizarStatusPedidoDto

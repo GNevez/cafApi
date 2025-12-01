@@ -28,23 +28,20 @@ public class CheckoutController : ControllerBase
             }
 
             var pedido = await _pedidoService.CreateAsync(checkoutData, cartToken);
-            
-            // Deletar cookie do carrinho após checkout
-            Response.Cookies.Delete("cart_token", new CookieOptions { Path = "/" });
-            
+
             return Ok(pedido);
         }
         catch (ArgumentException ex)
         {
-            return BadRequest(ex.Message);
+            return BadRequest(new { message = ex.Message });
         }
         catch (InvalidOperationException ex)
         {
-            return BadRequest(ex.Message);
+            return BadRequest(new { message = ex.Message });
         }
         catch (Exception ex)
         {
-            return StatusCode(500, $"Erro interno do servidor: {ex.Message}");
+            return StatusCode(500, new { message = $"Erro interno do servidor: {ex.Message}" });
         }
     }
 }

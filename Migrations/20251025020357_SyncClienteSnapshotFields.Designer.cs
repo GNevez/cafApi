@@ -3,6 +3,7 @@ using System;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
 using Microsoft.EntityFrameworkCore.Metadata;
+using Microsoft.EntityFrameworkCore.Migrations;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 using cafApi.Contexts;
 
@@ -11,9 +12,11 @@ using cafApi.Contexts;
 namespace cafApi.Migrations
 {
     [DbContext(typeof(ApplicationDbContext))]
-    partial class ApplicationDbContextModelSnapshot : ModelSnapshot
+    [Migration("20251025020357_SyncClienteSnapshotFields")]
+    partial class SyncClienteSnapshotFields
     {
-        protected override void BuildModel(ModelBuilder modelBuilder)
+        /// <inheritdoc />
+        protected override void BuildTargetModel(ModelBuilder modelBuilder)
         {
 #pragma warning disable 612, 618
             modelBuilder
@@ -315,83 +318,6 @@ namespace cafApi.Migrations
                     b.ToTable("descontos_quantidade");
                 });
 
-            modelBuilder.Entity("cafApi.Models.Devolucao", b =>
-                {
-                    b.Property<int>("Id")
-                        .ValueGeneratedOnAdd()
-                        .HasColumnType("int");
-
-                    MySqlPropertyBuilderExtensions.UseMySqlIdentityColumn(b.Property<int>("Id"));
-
-                    b.Property<string>("Cpf")
-                        .IsRequired()
-                        .HasColumnType("longtext");
-
-                    b.Property<DateTime?>("DataAtualizacao")
-                        .HasColumnType("datetime(6)");
-
-                    b.Property<DateTime>("DataCriacao")
-                        .HasColumnType("datetime(6)");
-
-                    b.Property<string>("Email")
-                        .IsRequired()
-                        .HasColumnType("longtext");
-
-                    b.Property<string>("NomeCliente")
-                        .IsRequired()
-                        .HasColumnType("longtext");
-
-                    b.Property<int>("PedidoId")
-                        .HasColumnType("int");
-
-                    b.Property<int>("Status")
-                        .HasColumnType("int");
-
-                    b.HasKey("Id");
-
-                    b.HasIndex("PedidoId");
-
-                    b.ToTable("Devolucoes");
-                });
-
-            modelBuilder.Entity("cafApi.Models.DevolucaoItem", b =>
-                {
-                    b.Property<int>("Id")
-                        .ValueGeneratedOnAdd()
-                        .HasColumnType("int");
-
-                    MySqlPropertyBuilderExtensions.UseMySqlIdentityColumn(b.Property<int>("Id"));
-
-                    b.Property<int>("CorId")
-                        .HasColumnType("int");
-
-                    b.Property<string>("CorNome")
-                        .IsRequired()
-                        .HasColumnType("longtext");
-
-                    b.Property<int>("DevolucaoId")
-                        .HasColumnType("int");
-
-                    b.Property<int>("ItemCarrinhoId")
-                        .HasColumnType("int");
-
-                    b.Property<int>("ProdutoId")
-                        .HasColumnType("int");
-
-                    b.Property<string>("ProdutoNome")
-                        .IsRequired()
-                        .HasColumnType("longtext");
-
-                    b.Property<int>("Quantidade")
-                        .HasColumnType("int");
-
-                    b.HasKey("Id");
-
-                    b.HasIndex("DevolucaoId");
-
-                    b.ToTable("DevolucaoItens");
-                });
-
             modelBuilder.Entity("cafApi.Models.Endereco", b =>
                 {
                     b.Property<int>("Id")
@@ -497,10 +423,6 @@ namespace cafApi.Migrations
                     b.Property<int>("ClienteId")
                         .HasColumnType("int");
 
-                    b.Property<string>("CodigoPedido")
-                        .IsRequired()
-                        .HasColumnType("longtext");
-
                     b.Property<string>("CodigoRastreamento")
                         .HasColumnType("longtext");
 
@@ -535,9 +457,6 @@ namespace cafApi.Migrations
                         .HasColumnType("longtext");
 
                     b.Property<string>("Observacoes")
-                        .HasColumnType("longtext");
-
-                    b.Property<string>("PagarmeOrderId")
                         .HasColumnType("longtext");
 
                     b.Property<decimal?>("PrecoFrete")
@@ -714,44 +633,6 @@ namespace cafApi.Migrations
                     b.ToTable("Roles");
                 });
 
-            modelBuilder.Entity("cafApi.Models.Transacao", b =>
-                {
-                    b.Property<int>("Id")
-                        .ValueGeneratedOnAdd()
-                        .HasColumnType("int");
-
-                    MySqlPropertyBuilderExtensions.UseMySqlIdentityColumn(b.Property<int>("Id"));
-
-                    b.Property<DateTime>("DataCriacao")
-                        .HasColumnType("datetime(6)");
-
-                    b.Property<DateTime>("DataTransacao")
-                        .HasColumnType("datetime(6)");
-
-                    b.Property<string>("Descricao")
-                        .IsRequired()
-                        .HasColumnType("longtext");
-
-                    b.Property<string>("MetodoPagamento")
-                        .IsRequired()
-                        .HasColumnType("longtext");
-
-                    b.Property<int?>("PedidoId")
-                        .HasColumnType("int");
-
-                    b.Property<int>("Tipo")
-                        .HasColumnType("int");
-
-                    b.Property<decimal>("Valor")
-                        .HasColumnType("decimal(65,30)");
-
-                    b.HasKey("Id");
-
-                    b.HasIndex("PedidoId");
-
-                    b.ToTable("Transacoes");
-                });
-
             modelBuilder.Entity("cafApi.Models.Usuario", b =>
                 {
                     b.Property<int>("Id")
@@ -867,28 +748,6 @@ namespace cafApi.Migrations
                     b.Navigation("Usuario");
                 });
 
-            modelBuilder.Entity("cafApi.Models.Devolucao", b =>
-                {
-                    b.HasOne("cafApi.Models.Pedido", "Pedido")
-                        .WithMany()
-                        .HasForeignKey("PedidoId")
-                        .OnDelete(DeleteBehavior.Restrict)
-                        .IsRequired();
-
-                    b.Navigation("Pedido");
-                });
-
-            modelBuilder.Entity("cafApi.Models.DevolucaoItem", b =>
-                {
-                    b.HasOne("cafApi.Models.Devolucao", "Devolucao")
-                        .WithMany("Itens")
-                        .HasForeignKey("DevolucaoId")
-                        .OnDelete(DeleteBehavior.Cascade)
-                        .IsRequired();
-
-                    b.Navigation("Devolucao");
-                });
-
             modelBuilder.Entity("cafApi.Models.Endereco", b =>
                 {
                     b.HasOne("cafApi.Models.Cliente", "Cliente")
@@ -987,15 +846,6 @@ namespace cafApi.Migrations
                     b.Navigation("ProdutosCor");
                 });
 
-            modelBuilder.Entity("cafApi.Models.Transacao", b =>
-                {
-                    b.HasOne("cafApi.Models.Pedido", "Pedido")
-                        .WithMany()
-                        .HasForeignKey("PedidoId");
-
-                    b.Navigation("Pedido");
-                });
-
             modelBuilder.Entity("cafApi.Models.Usuario", b =>
                 {
                     b.HasOne("cafApi.Models.Role", "Role")
@@ -1037,11 +887,6 @@ namespace cafApi.Migrations
             modelBuilder.Entity("cafApi.Models.Cupom", b =>
                 {
                     b.Navigation("CupomUsos");
-                });
-
-            modelBuilder.Entity("cafApi.Models.Devolucao", b =>
-                {
-                    b.Navigation("Itens");
                 });
 
             modelBuilder.Entity("cafApi.Models.Endereco", b =>

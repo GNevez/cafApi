@@ -43,12 +43,46 @@ public class PedidoController : ControllerBase
         }
     }
 
+    [HttpGet("by-cpf")]
+    public async Task<ActionResult<List<PedidoDto>>> GetByCpf([FromQuery] string cpf)
+    {
+        try
+        {
+            if (string.IsNullOrWhiteSpace(cpf))
+                return BadRequest("CPF é obrigatório");
+
+            var pedidos = await _pedidoService.GetByCpfAsync(cpf);
+            return Ok(pedidos);
+        }
+        catch (Exception ex)
+        {
+            return StatusCode(500, $"Erro interno do servidor: {ex.Message}");
+        }
+    }
+
     [HttpGet("{id:int}")]
     public async Task<ActionResult<PedidoDto>> GetById(int id)
     {
         try
         {
             var pedido = await _pedidoService.GetByIdAsync(id);
+            if (pedido == null)
+                return NotFound("Pedido não encontrado");
+
+            return Ok(pedido);
+        }
+        catch (Exception ex)
+        {
+            return StatusCode(500, $"Erro interno do servidor: {ex.Message}");
+        }
+    }
+
+    [HttpGet("codigo/{codigoPedido}")]
+    public async Task<ActionResult<PedidoDto>> GetByCodigoPedido(string codigoPedido)
+    {
+        try
+        {
+            var pedido = await _pedidoService.GetByCodigoPedidoAsync(codigoPedido);
             if (pedido == null)
                 return NotFound("Pedido não encontrado");
 
@@ -112,6 +146,23 @@ public class PedidoController : ControllerBase
         try
         {
             var pedido = await _pedidoService.UpdateStatusAsync(id, updateDto);
+            if (pedido == null)
+                return NotFound("Pedido não encontrado");
+
+            return Ok(pedido);
+        }
+        catch (Exception ex)
+        {
+            return StatusCode(500, $"Erro interno do servidor: {ex.Message}");
+        }
+    }
+
+    [HttpPut("codigo/{codigoPedido}/status")]
+    public async Task<ActionResult<PedidoDto>> UpdateStatusByCodigoPedido(string codigoPedido, [FromBody] AtualizarStatusPedidoDto updateDto)
+    {
+        try
+        {
+            var pedido = await _pedidoService.UpdateStatusByCodigoPedidoAsync(codigoPedido, updateDto);
             if (pedido == null)
                 return NotFound("Pedido não encontrado");
 

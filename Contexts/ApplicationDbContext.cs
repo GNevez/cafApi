@@ -23,6 +23,9 @@ public class ApplicationDbContext : DbContext
     public DbSet<DescontoQuantidade> DescontosQuantidade { get; set; }
     public DbSet<Cupom> Cupons { get; set; }
     public DbSet<CupomUso> CuponsUso { get; set; }
+    public DbSet<Transacao> Transacoes { get; set; }
+    public DbSet<Devolucao> Devolucoes { get; set; }
+    public DbSet<DevolucaoItem> DevolucaoItens { get; set; }
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
@@ -152,5 +155,19 @@ public class ApplicationDbContext : DbContext
             .WithMany()
             .HasForeignKey(c => c.CupomId)
             .OnDelete(DeleteBehavior.SetNull);
+
+        // 🔹 Devolução → Pedido
+        modelBuilder.Entity<Devolucao>()
+            .HasOne(d => d.Pedido)
+            .WithMany()
+            .HasForeignKey(d => d.PedidoId)
+            .OnDelete(DeleteBehavior.Restrict);
+
+        // 🔹 DevolucaoItem → Devolucao
+        modelBuilder.Entity<DevolucaoItem>()
+            .HasOne(di => di.Devolucao)
+            .WithMany(d => d.Itens)
+            .HasForeignKey(di => di.DevolucaoId)
+            .OnDelete(DeleteBehavior.Cascade);
     }
 }

@@ -34,6 +34,24 @@ namespace cafApi.Services
             return await MapPedidoToDto(pedido);
         }
 
+        public async Task<PedidoDto?> GetByCodigoPedidoAsync(string codigoPedido)
+        {
+            var pedido = await _context.Pedidos
+                .Include(p => p.Cliente)
+                .Include(p => p.EnderecoEntrega)
+                .Include(p => p.Carrinho)
+                    .ThenInclude(c => c.Itens)
+                        .ThenInclude(i => i.Produto)
+                .Include(p => p.Carrinho)
+                    .ThenInclude(c => c.Itens)
+                        .ThenInclude(i => i.Cor)
+                .FirstOrDefaultAsync(p => p.CodigoPedido == codigoPedido);
+
+            if (pedido == null) return null;
+
+            return await MapPedidoToDto(pedido);
+        }
+
         public async Task<(List<PedidoDto> pedidos, int totalCount)> GetAllAsync(int pageNumber, int pageSize)
         {
             var baseQuery = _context.Pedidos
@@ -153,6 +171,32 @@ namespace cafApi.Services
             return (pedidosDto, totalCount);
         }
 
+        public async Task<List<PedidoDto>> GetByCpfAsync(string cpf)
+        {
+            var cpfLimpo = cpf.Replace(".", "").Replace("-", "").Trim();
+
+            var pedidos = await _context.Pedidos
+                .Include(p => p.Cliente)
+                .Include(p => p.EnderecoEntrega)
+                .Include(p => p.Carrinho)
+                    .ThenInclude(c => c.Itens)
+                        .ThenInclude(i => i.Produto)
+                .Include(p => p.Carrinho)
+                    .ThenInclude(c => c.Itens)
+                        .ThenInclude(i => i.Cor)
+                .Where(p => p.Cliente.Cpf == cpfLimpo)
+                .OrderByDescending(p => p.DataPedido)
+                .ToListAsync();
+
+            var pedidosDto = new List<PedidoDto>();
+            foreach (var pedido in pedidos)
+            {
+                pedidosDto.Add(await MapPedidoToDto(pedido));
+            }
+
+            return pedidosDto;
+        }
+
         public async Task<PedidoDto> CreateAsync(CriarPedidoDto criarPedidoDto, string cartToken)
         {
             // Buscar carrinho
@@ -215,7 +259,7 @@ namespace cafApi.Services
                 await _context.SaveChangesAsync();
             }
 
-            // Criar endereço de entrega
+            // Criar endereço de entrega (snapshot do pedido, não marca como principal)
             var endereco = new Endereco
             {
                 ClienteId = cliente.Id,
@@ -226,7 +270,7 @@ namespace cafApi.Services
                 Bairro = criarPedidoDto.Bairro,
                 Cidade = criarPedidoDto.Cidade,
                 Estado = criarPedidoDto.Estado,
-                IsPrincipal = true, // Primeiro endereço é principal
+                IsPrincipal = false, // Não marca como principal automaticamente
                 DataCriacao = DateTime.UtcNow
             };
             _context.Enderecos.Add(endereco);
@@ -234,10 +278,40 @@ namespace cafApi.Services
 
             // Calcular total do pedido
             var subtotal = carrinho.Itens.Sum(i => i.Quantidade * i.Produto.Preco);
-            // TotalPedido armazena o valor bruto (sem descontos)
-            var totalPedido = subtotal + (criarPedidoDto.PrecoFrete ?? 0);
+            // Incluir frete e subtrair descontos (cupom / promoção) para obter o total final
+            var descontoPorUnidade = criarPedidoDto.DescontoPorUnidade ?? 0m;
+            var descontoCupom = criarPedidoDto.DescontoCupom ?? 0m;
+            var precoFrete = criarPedidoDto.PrecoFrete ?? 0m;
 
-            // Criar pedido
+            // Calcular juros (se aplicável) usando a maior taxa dos produtos do carrinho
+            var parcelasNum = criarPedidoDto.ParcelasNum ?? 1;
+            var cartMaxTaxa = carrinho.Itens.Any() ? carrinho.Itens.Max(i => i.Produto.TaxaJuros) : 0m;
+            var taxaUsada = parcelasNum > 1 ? cartMaxTaxa : 0m;
+
+            // Aplicar juros sobre: subtotal - desconto de promoção (antes do frete)
+            var subtotalComPromo = subtotal - descontoPorUnidade;
+            var totalComJurosSobreItens = subtotalComPromo * (1 + taxaUsada);
+
+            var totalPedido = totalComJurosSobreItens + precoFrete - descontoCupom;
+
+            // Garantir que o total não fique negativo
+            if (totalPedido < 0) totalPedido = 0m;
+
+            // Validação: verificar se o frontend enviou o total e se bate com o cálculo do servidor
+            if (!criarPedidoDto.TotalEnviado.HasValue)
+            {
+                throw new ArgumentException("Total enviado ausente no payload.");
+            }
+
+            // Comparar arredondando para 2 casas (centavos)
+            var esperado = Math.Round(totalPedido, 2);
+            var enviado = Math.Round(criarPedidoDto.TotalEnviado.Value, 2);
+            if (esperado != enviado)
+            {
+                throw new ArgumentException($"Total informado ({enviado:C2}) não confere com o cálculo do servidor ({esperado:C2}).");
+            }
+
+            // Criar pedido com snapshot dos dados do cliente
             var pedido = new Pedido
             {
                 ClienteId = cliente.Id,
@@ -250,19 +324,51 @@ namespace cafApi.Services
                 DescontoCupom = criarPedidoDto.DescontoCupom ?? 0m,
                 DataPedido = DateTime.UtcNow,
                 MetodoPagamento = criarPedidoDto.MetodoPagamento,
-                Observacoes = criarPedidoDto.Observacoes
+                Observacoes = criarPedidoDto.Observacoes,
+                // Snapshot: gravar dados do cliente no momento da compra
+                NomeCliente = criarPedidoDto.Nome,
+                EmailCliente = criarPedidoDto.Email,
+                TelefoneCliente = criarPedidoDto.Telefone,
+                CodigoPedido = GenerateCodigoPedido()
             };
             _context.Pedidos.Add(pedido);
 
-            // Atualizar status do carrinho
-            carrinho.Status = StatusCarrinho.Finalizado;
-            carrinho.Ativo = false; // impedir reutilização deste carrinho após o checkout
             carrinho.DataAtualizacao = DateTime.UtcNow;
 
             await _context.SaveChangesAsync();
 
-            // Retornar pedido criado
             return await GetByIdAsync(pedido.Id) ?? throw new InvalidOperationException("Erro ao criar pedido");
+        }
+
+        // Calcula o total esperado para um checkout (mesma lógica usada em CreateAsync)
+        public async Task<decimal> CalculateTotalAsync(CriarPedidoDto criarPedidoDto, string cartToken)
+        {
+            var carrinho = await _context.Carrinhos
+                .Include(c => c.Itens)
+                    .ThenInclude(i => i.Produto)
+                .Include(c => c.Itens)
+                    .ThenInclude(i => i.Cor)
+                .Include(c => c.Cupom)
+                .FirstOrDefaultAsync(c => c.Token == cartToken && c.Ativo);
+
+            if (carrinho == null)
+                throw new InvalidOperationException("Carrinho não encontrado ou já finalizado");
+
+            var subtotal = carrinho.Itens.Sum(i => i.Quantidade * i.Produto.Preco);
+            var descontoPorUnidade = criarPedidoDto.DescontoPorUnidade ?? 0m;
+            var descontoCupom = criarPedidoDto.DescontoCupom ?? 0m;
+            var precoFrete = criarPedidoDto.PrecoFrete ?? 0m;
+
+            var parcelasNum = criarPedidoDto.ParcelasNum ?? 1;
+            var cartMaxTaxa = carrinho.Itens.Any() ? carrinho.Itens.Max(i => i.Produto.TaxaJuros) : 0m;
+            var taxaUsada = parcelasNum > 1 ? cartMaxTaxa : 0m;
+
+            var subtotalComPromo = subtotal - descontoPorUnidade;
+            var totalComJurosSobreItens = subtotalComPromo * (1 + taxaUsada);
+            var totalPedido = totalComJurosSobreItens + precoFrete - descontoCupom;
+            if (totalPedido < 0) totalPedido = 0m;
+
+            return Math.Round(totalPedido, 2);
         }
 
         public async Task<PedidoDto?> UpdateStatusAsync(int id, AtualizarStatusPedidoDto updateDto)
@@ -270,6 +376,7 @@ namespace cafApi.Services
             var pedido = await _context.Pedidos.FindAsync(id);
             if (pedido == null) return null;
 
+            var statusAnterior = pedido.Status;
             pedido.Status = updateDto.Status;
             pedido.CodigoRastreamento = updateDto.CodigoRastreamento;
             pedido.Observacoes = updateDto.Observacoes;
@@ -277,7 +384,72 @@ namespace cafApi.Services
             pedido.DataAtualizacao = DateTime.UtcNow;
 
             await _context.SaveChangesAsync();
+
+            // Se mudou para EmSeparacao e ainda não registramos uma ENTRADA de venda para esse pedido, cria a transação
+            if (statusAnterior != StatusPedido.EmSeparacao && updateDto.Status == StatusPedido.EmSeparacao)
+            {
+                var jaRegistrado = await _context.Transacoes
+                    .AsNoTracking()
+                    .AnyAsync(t => t.PedidoId == pedido.Id && t.Tipo == TipoTransacao.Entrada && t.Descricao.StartsWith("Entrada de venda do pedido #"));
+
+                if (!jaRegistrado)
+                {
+                    var transacao = new Transacao
+                    {
+                        Tipo = TipoTransacao.Entrada,
+                        Valor = pedido.TotalPedido,
+                        Descricao = $"Entrada de venda do pedido #{pedido.Id}",
+                        MetodoPagamento = "venda",
+                        PedidoId = pedido.Id,
+                        DataTransacao = DateTime.UtcNow,
+                        DataCriacao = DateTime.UtcNow
+                    };
+
+                    _context.Transacoes.Add(transacao);
+                    await _context.SaveChangesAsync();
+                }
+            }
             return await GetByIdAsync(id);
+        }
+
+        public async Task<PedidoDto?> UpdateStatusByCodigoPedidoAsync(string codigoPedido, AtualizarStatusPedidoDto updateDto)
+        {
+            var pedido = await _context.Pedidos.FirstOrDefaultAsync(p => p.CodigoPedido == codigoPedido);
+            if (pedido == null) return null;
+
+            var statusAnterior = pedido.Status;
+            pedido.Status = updateDto.Status;
+            pedido.CodigoRastreamento = updateDto.CodigoRastreamento;
+            pedido.Observacoes = updateDto.Observacoes;
+            pedido.MotivoCancelamento = updateDto.MotivoCancelamento;
+            pedido.DataAtualizacao = DateTime.UtcNow;
+
+            await _context.SaveChangesAsync();
+
+            if (statusAnterior != StatusPedido.EmSeparacao && updateDto.Status == StatusPedido.EmSeparacao)
+            {
+                var jaRegistrado = await _context.Transacoes
+                    .AsNoTracking()
+                    .AnyAsync(t => t.PedidoId == pedido.Id && t.Tipo == TipoTransacao.Entrada && t.Descricao.StartsWith("Entrada de venda do pedido #"));
+
+                if (!jaRegistrado)
+                {
+                    var transacao = new Transacao
+                    {
+                        Tipo = TipoTransacao.Entrada,
+                        Valor = pedido.TotalPedido,
+                        Descricao = $"Entrada de venda do pedido #{pedido.CodigoPedido}",
+                        MetodoPagamento = "venda",
+                        PedidoId = pedido.Id,
+                        DataTransacao = DateTime.UtcNow,
+                        DataCriacao = DateTime.UtcNow
+                    };
+
+                    _context.Transacoes.Add(transacao);
+                    await _context.SaveChangesAsync();
+                }
+            }
+            return await GetByCodigoPedidoAsync(codigoPedido);
         }
 
         public async Task<bool> DeleteAsync(int id)
@@ -311,9 +483,11 @@ namespace cafApi.Services
             return new PedidoDto
             {
                 Id = pedido.Id,
+                CodigoPedido = pedido.CodigoPedido,
                 ClienteId = pedido.ClienteId,
-                ClienteNome = pedido.Cliente.Nome,
-                ClienteEmail = pedido.Cliente.Email,
+                ClienteNome = pedido.NomeCliente,
+                ClienteEmail = pedido.EmailCliente,
+                ClienteTelefone = pedido.TelefoneCliente,
                 Status = pedido.Status,
                 PrecoFrete = pedido.PrecoFrete,
                 TotalPedido = pedido.TotalPedido,
@@ -338,6 +512,13 @@ namespace cafApi.Services
                 },
                 Itens = itensDto
             };
+        }
+
+        private string GenerateCodigoPedido()
+        {
+            var timestamp = DateTimeOffset.UtcNow.ToUnixTimeMilliseconds();
+            var random = new Random().Next(100, 999);
+            return $"CAF-{timestamp}{random}";
         }
     }
 }

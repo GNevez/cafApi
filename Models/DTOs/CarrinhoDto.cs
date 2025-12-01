@@ -28,7 +28,10 @@ public class ItemCarrinhoDto
     public string ProdutoSKU { get; set; } = string.Empty;
     public decimal ProdutoPreco { get; set; }
     public string ProdutoImagem { get; set; } = string.Empty;
-    
+    // Parcelamento / juros
+    public int ProdutoMaxParcelas { get; set; }
+    public decimal ProdutoTaxaJuros { get; set; }
+
     // Informações da cor
     public string CorNome { get; set; } = string.Empty;
     public string? CorHex1 { get; set; }

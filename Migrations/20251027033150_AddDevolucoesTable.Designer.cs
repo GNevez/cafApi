@@ -3,6 +3,7 @@ using System;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
 using Microsoft.EntityFrameworkCore.Metadata;
+using Microsoft.EntityFrameworkCore.Migrations;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 using cafApi.Contexts;
 
@@ -11,9 +12,11 @@ using cafApi.Contexts;
 namespace cafApi.Migrations
 {
     [DbContext(typeof(ApplicationDbContext))]
-    partial class ApplicationDbContextModelSnapshot : ModelSnapshot
+    [Migration("20251027033150_AddDevolucoesTable")]
+    partial class AddDevolucoesTable
     {
-        protected override void BuildModel(ModelBuilder modelBuilder)
+        /// <inheritdoc />
+        protected override void BuildTargetModel(ModelBuilder modelBuilder)
         {
 #pragma warning disable 612, 618
             modelBuilder
@@ -497,10 +500,6 @@ namespace cafApi.Migrations
                     b.Property<int>("ClienteId")
                         .HasColumnType("int");
 
-                    b.Property<string>("CodigoPedido")
-                        .IsRequired()
-                        .HasColumnType("longtext");
-
                     b.Property<string>("CodigoRastreamento")
                         .HasColumnType("longtext");
 
@@ -535,9 +534,6 @@ namespace cafApi.Migrations
                         .HasColumnType("longtext");
 
                     b.Property<string>("Observacoes")
-                        .HasColumnType("longtext");
-
-                    b.Property<string>("PagarmeOrderId")
                         .HasColumnType("longtext");
 
                     b.Property<decimal?>("PrecoFrete")

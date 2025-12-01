@@ -220,6 +220,9 @@ public class CartService : ICartService
                 ProdutoSKU = i.Produto.SKU,
                 ProdutoPreco = i.Produto.Preco,
                 ProdutoImagem = i.Produto.ImagemPrincipal,
+                // Mapear parcelamento/juros para o cliente usar no frontend
+                ProdutoMaxParcelas = i.Produto.MaxParcelas,
+                ProdutoTaxaJuros = i.Produto.TaxaJuros,
                 CorNome = i.Cor.Nome,
                 CorHex1 = i.Cor.Hex1,
                 CorHex2 = i.Cor.Hex2

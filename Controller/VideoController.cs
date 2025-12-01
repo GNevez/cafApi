@@ -22,6 +22,14 @@ namespace cafApi.Controller
             return Ok(videos);
         }
 
+        [HttpGet("lifestyle")]
+        public async Task<ActionResult<IEnumerable<VideoDto>>> GetLifestyle([FromQuery] int count = 5)
+        {
+            if (count <= 0) count = 5;
+            var videos = await _videoService.GetLifestyleAsync(count);
+            return Ok(videos);
+        }
+
         [HttpGet("{id}")]
         public async Task<ActionResult<VideoDto>> GetById(int id)
         {

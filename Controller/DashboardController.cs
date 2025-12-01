@@ -1,0 +1,167 @@
+using cafApi.Services;
+using Microsoft.AspNetCore.Mvc;
+
+namespace cafApi.Controller
+{
+    [ApiController]
+    [Route("api/[controller]")]
+    public class DashboardController : ControllerBase
+    {
+        private readonly IDashboardService _dashboardService;
+        private readonly IActiveClientsTracker _activeClients;
+
+        public DashboardController(IDashboardService dashboardService, IActiveClientsTracker activeClients)
+        {
+            _dashboardService = dashboardService;
+            _activeClients = activeClients;
+        }
+
+        [HttpGet("summary")]
+        public async Task<IActionResult> GetSummary()
+        {
+            var (entradas, saidas, saldo) = await _dashboardService.GetTransacaoTotalsAsync();
+            var vendasTotais = await _dashboardService.GetTotalSalesAsync();
+            var pedidosPendentes = await _dashboardService.GetPendingOrdersCountAsync();
+            var totalPedidos = await _dashboardService.GetTotalOrdersCountAsync();
+            var ticketMedio = await _dashboardService.GetAverageTicketAsync();
+            var clientesAtivos = _activeClients.GetActiveCount();
+
+            return Ok(new
+            {
+                totalEntradas = entradas,
+                totalSaidas = saidas,
+                saldo,
+                vendasTotais,
+                pedidosPendentes,
+                totalPedidos,
+                ticketMedio,
+                clientesAtivos
+            });
+        }
+
+        [HttpGet("series")]
+        public async Task<IActionResult> GetSeries([FromQuery] string metric = "lucro", [FromQuery] string range = "30d")
+        {
+            metric = metric.ToLowerInvariant();
+            range = range.ToLowerInvariant();
+            if (metric != "lucro" && metric != "entrada" && metric != "saida")
+            {
+                return BadRequest(new { message = "metric must be one of: lucro, entrada, saida" });
+            }
+            var allowedRanges = new HashSet<string> { "today", "7d", "30d", "1y", "5y" };
+            if (!allowedRanges.Contains(range)) range = "30d";
+
+            var (labels, data) = await _dashboardService.GetSeriesAsync(metric, range);
+            return Ok(new { labels, data });
+        }
+
+        [HttpGet("series/point")]
+        public async Task<IActionResult> GetSeriesPoint([FromQuery] string metric = "lucro", [FromQuery] string date = "", [FromQuery] string granularity = "day")
+        {
+            metric = metric.ToLowerInvariant();
+            granularity = granularity.ToLowerInvariant();
+            
+            if (metric != "lucro" && metric != "entrada" && metric != "saida")
+            {
+                return BadRequest(new { message = "metric must be one of: lucro, entrada, saida" });
+            }
+            
+            if (string.IsNullOrWhiteSpace(date))
+            {
+                return BadRequest(new { message = "date is required" });
+            }
+            
+            if (granularity != "day" && granularity != "month" && granularity != "year")
+            {
+                return BadRequest(new { message = "granularity must be one of: day, month, year" });
+            }
+
+            var value = await _dashboardService.GetSeriesPointValueAsync(metric, date, granularity);
+            return Ok(new { date, value });
+        }
+
+        [HttpGet("recent-orders")]
+        public async Task<IActionResult> GetRecentOrders([FromQuery] int limit = 7)
+        {
+            limit = Math.Clamp(limit, 1, 50);
+            var pedidos = await _dashboardService.GetRecentOrdersAsync(limit);
+            return Ok(pedidos);
+        }
+
+        public class HeartbeatRequest { public string? ClientId { get; set; } }
+
+        [HttpPost("heartbeat")]
+        public IActionResult Heartbeat([FromBody] HeartbeatRequest request)
+        {
+            var clientId = request.ClientId;
+            if (string.IsNullOrWhiteSpace(clientId))
+            {
+                // fallback to header if not provided in body
+                clientId = Request.Headers["X-Client-Id"].FirstOrDefault();
+            }
+            if (string.IsNullOrWhiteSpace(clientId))
+            {
+                return BadRequest(new { message = "clientId is required" });
+            }
+            _activeClients.Heartbeat(clientId);
+            return Ok(new { ok = true });
+        }
+
+        [HttpPost("disconnect")]
+        public IActionResult Disconnect([FromBody] HeartbeatRequest request)
+        {
+            var clientId = request.ClientId;
+            if (string.IsNullOrWhiteSpace(clientId))
+            {
+                clientId = Request.Headers["X-Client-Id"].FirstOrDefault();
+            }
+            if (string.IsNullOrWhiteSpace(clientId))
+            {
+                return BadRequest(new { message = "clientId is required" });
+            }
+            _activeClients.Disconnect(clientId);
+            return Ok(new { ok = true });
+        }
+
+        [HttpGet("active-clients")]
+        public IActionResult GetActiveClients()
+        {
+            var count = _activeClients.GetActiveCount();
+            return Ok(new { count });
+        }
+
+        [HttpGet("behavior-analytics")]
+        public async Task<IActionResult> GetBehaviorAnalytics()
+        {
+            var cartAbandonmentRate = await _dashboardService.GetCartAbandonmentRateAsync();
+            var customerLTV = await _dashboardService.GetCustomerLTVAsync();
+
+            return Ok(new
+            {
+                cartAbandonmentRate,
+                customerLTV,
+                bounceRate = 0m, // Requires external analytics integration
+                mostViewedProducts = "N/A", // Requires product view tracking
+                mostAccessedPages = "N/A" // Requires page view tracking
+            });
+        }
+
+        [HttpGet("product-performance")]
+        public async Task<IActionResult> GetProductPerformance()
+        {
+            var topProducts = await _dashboardService.GetTopProductsAsync(5);
+            var lowPerformers = await _dashboardService.GetLowPerformingProductsAsync(5);
+            var salesByCategory = await _dashboardService.GetSalesByCategoryAsync();
+            var (totalCouponsUsed, totalDiscount) = await _dashboardService.GetCouponUsageAsync();
+
+            return Ok(new
+            {
+                topProducts = topProducts.Select(p => new { name = p.productName, quantity = p.quantity, revenue = p.revenue }),
+                lowPerformingProducts = lowPerformers.Select(p => new { name = p.productName, quantity = p.quantity }),
+                salesByCategory = salesByCategory.Select(c => new { category = c.categoryName, revenue = c.revenue }),
+                returnRate = 0m, // Requires return/refund tracking in orders
+                couponUsage = new { totalUsed = totalCouponsUsed, totalDiscount }
+            });
+        }
+    }
+}
