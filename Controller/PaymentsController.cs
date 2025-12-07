@@ -190,6 +190,9 @@ public class PaymentsController : ControllerBase
                 Console.WriteLine($"[Payments] PagarmeOrderId saved for order {codigoPedido}");
             }
 
+            Response.Cookies.Delete("cart_token");
+            //Console.WriteLine($"[Payments] Cart cookie deleted for order {codigoPedido}");
+
             object? pixInfo = null;
             if (orderResponse.Charges != null && orderResponse.Charges.Any())
             {

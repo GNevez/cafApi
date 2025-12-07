@@ -12,8 +12,8 @@ using cafApi.Contexts;
 namespace cafApi.Migrations
 {
     [DbContext(typeof(ApplicationDbContext))]
-    [Migration("20251109191058_PopulateCodigoPedidoForExistingRecords")]
-    partial class PopulateCodigoPedidoForExistingRecords
+    [Migration("20251205200011_InitialCreate")]
+    partial class InitialCreate
     {
         /// <inheritdoc />
         protected override void BuildTargetModel(ModelBuilder modelBuilder)
@@ -538,6 +538,9 @@ namespace cafApi.Migrations
                         .HasColumnType("longtext");
 
                     b.Property<string>("Observacoes")
+                        .HasColumnType("longtext");
+
+                    b.Property<string>("PagarmeOrderId")
                         .HasColumnType("longtext");
 
                     b.Property<decimal?>("PrecoFrete")

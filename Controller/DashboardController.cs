@@ -9,11 +9,16 @@ namespace cafApi.Controller
     {
         private readonly IDashboardService _dashboardService;
         private readonly IActiveClientsTracker _activeClients;
+        private readonly IGoogleAnalyticsService _googleAnalyticsService;
 
-        public DashboardController(IDashboardService dashboardService, IActiveClientsTracker activeClients)
+        public DashboardController(
+            IDashboardService dashboardService,
+            IActiveClientsTracker activeClients,
+            IGoogleAnalyticsService googleAnalyticsService)
         {
             _dashboardService = dashboardService;
             _activeClients = activeClients;
+            _googleAnalyticsService = googleAnalyticsService;
         }
 
         [HttpGet("summary")]
@@ -26,6 +31,21 @@ namespace cafApi.Controller
             var ticketMedio = await _dashboardService.GetAverageTicketAsync();
             var clientesAtivos = _activeClients.GetActiveCount();
 
+            long? visitantes = null;
+            long? sessoes = null;
+            if (_googleAnalyticsService.IsConfigured())
+            {
+                try
+                {
+                    var (users, sessions) = await _googleAnalyticsService.GetUsersAndSessionsAsync();
+                    visitantes = users;
+                    sessoes = sessions;
+                }
+                catch
+                {
+                }
+            }
+
             return Ok(new
             {
                 totalEntradas = entradas,
@@ -35,7 +55,9 @@ namespace cafApi.Controller
                 pedidosPendentes,
                 totalPedidos,
                 ticketMedio,
-                clientesAtivos
+                clientesAtivos,
+                visitantes,
+                sessoes
             });
         }
 
@@ -136,13 +158,45 @@ namespace cafApi.Controller
             var cartAbandonmentRate = await _dashboardService.GetCartAbandonmentRateAsync();
             var customerLTV = await _dashboardService.GetCustomerLTVAsync();
 
+            decimal bounceRate = 0m;
+            object mostViewedProductsHistorical = "N/A";
+            object mostAccessedPagesHistorical = "N/A";
+            object mostViewedProductsRealtime = "N/A";
+            object mostAccessedPagesRealtime = "N/A";
+
+            if (_googleAnalyticsService.IsConfigured())
+            {
+                try
+                {
+                    bounceRate = await _googleAnalyticsService.GetBounceRateAsync();
+
+                    // Historical data (last 7 days)
+                    var topProductsHistorical = await _googleAnalyticsService.GetTopViewedProductsHistoricalAsync(5);
+                    var topPagesHistorical = await _googleAnalyticsService.GetTopPagesHistoricalAsync(5);
+
+                    // Realtime data (last 30 minutes)
+                    var topProductsRealtime = await _googleAnalyticsService.GetTopViewedProductsRealtimeAsync(5);
+                    var topPagesRealtime = await _googleAnalyticsService.GetTopPagesRealtimeAsync(5);
+
+                    mostViewedProductsHistorical = topProductsHistorical.Select(p => new { productName = p.productName, views = p.views });
+                    mostAccessedPagesHistorical = topPagesHistorical.Select(p => new { pagePath = p.pagePath, views = p.views });
+                    mostViewedProductsRealtime = topProductsRealtime.Select(p => new { productName = p.productName, views = p.views });
+                    mostAccessedPagesRealtime = topPagesRealtime.Select(p => new { pagePath = p.pagePath, views = p.views });
+                }
+                catch
+                {
+                }
+            }
+
             return Ok(new
             {
                 cartAbandonmentRate,
                 customerLTV,
-                bounceRate = 0m, // Requires external analytics integration
-                mostViewedProducts = "N/A", // Requires product view tracking
-                mostAccessedPages = "N/A" // Requires page view tracking
+                bounceRate,
+                mostViewedProductsHistorical,
+                mostAccessedPagesHistorical,
+                mostViewedProductsRealtime,
+                mostAccessedPagesRealtime
             });
         }
 

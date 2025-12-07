@@ -201,31 +201,40 @@ public class CartService : ICartService
         cart = await _context.Carrinhos
             .Include(c => c.Itens)
                 .ThenInclude(i => i.Produto)
+                    .ThenInclude(p => p.CoresDisponiveis)
+                        .ThenInclude(pc => pc.Imagens)
             .Include(c => c.Itens)
                 .ThenInclude(i => i.Cor)
             .Include(c => c.Cupom)
             .FirstAsync(c => c.Id == cart.Id);
 
         var items = cart.Itens
-            .Where(i => i.Produto != null && i.Cor != null) 
-            .Select(i => new ItemCarrinhoDto
+            .Where(i => i.Produto != null && i.Cor != null)
+            .Select(i =>
             {
-                Id = i.Id,
-                ProdutoId = i.ProdutoId,
-                CorId = i.CorId,
-                Quantidade = i.Quantidade,
-                DataAdicao = i.DataAdicao,
-                ProdutoNome = i.Produto.Nome,
-                ProdutoSlug = i.Produto.Slug,
-                ProdutoSKU = i.Produto.SKU,
-                ProdutoPreco = i.Produto.Preco,
-                ProdutoImagem = i.Produto.ImagemPrincipal,
-                // Mapear parcelamento/juros para o cliente usar no frontend
-                ProdutoMaxParcelas = i.Produto.MaxParcelas,
-                ProdutoTaxaJuros = i.Produto.TaxaJuros,
-                CorNome = i.Cor.Nome,
-                CorHex1 = i.Cor.Hex1,
-                CorHex2 = i.Cor.Hex2
+                var corSelecionada = i.Produto.CoresDisponiveis
+                    .FirstOrDefault(c => c.Id == i.CorId);
+                var imagemCor = corSelecionada?.Imagens
+                    .FirstOrDefault()?.Url ?? i.Produto.ImagemPrincipal;
+
+                return new ItemCarrinhoDto
+                {
+                    Id = i.Id,
+                    ProdutoId = i.ProdutoId,
+                    CorId = i.CorId,
+                    Quantidade = i.Quantidade,
+                    DataAdicao = i.DataAdicao,
+                    ProdutoNome = i.Produto.Nome,
+                    ProdutoSlug = i.Produto.Slug,
+                    ProdutoSKU = i.Produto.SKU,
+                    ProdutoPreco = i.Produto.Preco,
+                    ProdutoImagem = imagemCor,
+                    ProdutoMaxParcelas = i.Produto.MaxParcelas,
+                    ProdutoTaxaJuros = i.Produto.TaxaJuros,
+                    CorNome = i.Cor.Nome,
+                    CorHex1 = i.Cor.Hex1,
+                    CorHex2 = i.Cor.Hex2
+                };
             }).ToList();
 
         // Calcular desconto de cupom (se houver)

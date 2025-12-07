@@ -10,15 +10,7 @@ using cafApi.Middleware;
 var builder = WebApplication.CreateBuilder(args);
 
 // Configurar WebRootPath se não estiver definido
-if (string.IsNullOrEmpty(builder.Environment.WebRootPath))
-{
-    var wwwrootPath = Path.Combine(builder.Environment.ContentRootPath, "wwwroot");
-    if (!Directory.Exists(wwwrootPath))
-    {
-        Directory.CreateDirectory(wwwrootPath);
-    }
-    builder.Environment.WebRootPath = wwwrootPath;
-}
+
 
 builder.Services.AddDbContext<ApplicationDbContext>(options =>
     options.UseMySql(
@@ -41,6 +33,7 @@ builder.Services.AddScoped<IPedidoService, PedidoService>();
 builder.Services.AddScoped<ITransacaoService, TransacaoService>();
 builder.Services.AddScoped<IDashboardService, DashboardService>();
 builder.Services.AddScoped<IPagarmeService, PagarmeService>();
+builder.Services.AddScoped<IGoogleAnalyticsService, GoogleAnalyticsService>();
 builder.Services.AddSingleton<IActiveClientsTracker, ActiveClientsTracker>();
 builder.Services.AddScoped<SeedService>();
 builder.Services.AddHttpClient(); // Necessário para PagarmeService
@@ -148,6 +141,16 @@ builder.Services.AddSwaggerGen(c =>
 
 var app = builder.Build();
 
+if (string.IsNullOrEmpty(builder.Environment.WebRootPath))
+{
+    var wwwrootPath = Path.Combine(builder.Environment.ContentRootPath, "wwwroot");
+    if (!Directory.Exists(wwwrootPath))
+    {
+        Directory.CreateDirectory(wwwrootPath);
+    }
+    builder.Environment.WebRootPath = wwwrootPath;
+}
+
 // 🔹 Pipeline padrão
 if (app.Environment.IsDevelopment())
 {
@@ -161,8 +164,19 @@ if (!app.Environment.IsDevelopment())
     app.UseHttpsRedirection();
 }
 
-// Configurar acesso a arquivos estáticos (uploads)
 app.UseStaticFiles();
+
+var uploadsPath = Path.Combine(app.Environment.WebRootPath, "uploads");
+if (!Directory.Exists(uploadsPath))
+{
+    Directory.CreateDirectory(uploadsPath);
+}
+
+app.UseStaticFiles(new StaticFileOptions
+{
+    FileProvider = new Microsoft.Extensions.FileProviders.PhysicalFileProvider(uploadsPath),
+    RequestPath = "/uploads"
+});
 
 // Configurar CORS baseado no ambiente
 if (app.Environment.IsDevelopment())
@@ -184,10 +198,13 @@ app.UseAuthorization();
 app.UseMiddleware<AccessDeniedMiddleware>();
 
 // 🔹 Executar seed de dados iniciais
-using (var scope = app.Services.CreateScope())
+if (!app.Environment.IsEnvironment("DesignTime"))
 {
-    var seedService = scope.ServiceProvider.GetRequiredService<SeedService>();
-    await seedService.SeedAsync();
+    using (var scope = app.Services.CreateScope())
+    {
+        var seedService = scope.ServiceProvider.GetRequiredService<SeedService>();
+        await seedService.SeedAsync();
+    }
 }
 
 app.MapControllers();
