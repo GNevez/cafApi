@@ -6,6 +6,14 @@
     <ImplicitUsings>enable</ImplicitUsings>
   </PropertyGroup>
 
+  <!-- Excluir pasta PrintClient (é um projeto separado) -->
+  <ItemGroup>
+    <Compile Remove="PrintClient\**" />
+    <Content Remove="PrintClient\**" />
+    <EmbeddedResource Remove="PrintClient\**" />
+    <None Remove="PrintClient\**" />
+  </ItemGroup>
+
   <ItemGroup>
     <PackageReference Include="Google.Analytics.Data.V1Beta" Version="2.0.0-beta10" />
     <PackageReference Include="Microsoft.AspNetCore.Authentication.JwtBearer" Version="8.0.0" />

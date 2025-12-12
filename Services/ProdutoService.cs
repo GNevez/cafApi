@@ -56,6 +56,59 @@ namespace cafApi.Services
             return produtos.Select(p => p.ToResponseDto());
         }
 
+        public async Task<(List<ProdutoResponseDto> produtos, int totalCount)> GetPaginatedAsync(int pageNumber, int pageSize, int? categoriaId = null, int? corId = null, decimal? precoMin = null, decimal? precoMax = null, string? ordenacao = null)
+        {
+            var query = _context.Produtos
+                .Where(p => p.Active == true)
+                .Include(p => p.CoresDisponiveis)
+                    .ThenInclude(c => c.Imagens)
+                .Include(p => p.Categoria)
+                .AsQueryable();
+
+            // Filtro por categoria
+            if (categoriaId.HasValue)
+            {
+                query = query.Where(p => p.CategoriaId == categoriaId.Value);
+            }
+
+            // Filtro por cor (ProdutosCor.Id)
+            if (corId.HasValue)
+            {
+                query = query.Where(p => p.CoresDisponiveis.Any(c => c.Id == corId.Value));
+            }
+
+            // Filtro por preço mínimo
+            if (precoMin.HasValue)
+            {
+                query = query.Where(p => p.Preco >= precoMin.Value);
+            }
+
+            // Filtro por preço máximo
+            if (precoMax.HasValue)
+            {
+                query = query.Where(p => p.Preco <= precoMax.Value);
+            }
+
+            // Ordenação
+            query = ordenacao?.ToLower() switch
+            {
+                "preco-asc" => query.OrderBy(p => p.Preco),
+                "preco-desc" => query.OrderByDescending(p => p.Preco),
+                "nome" => query.OrderBy(p => p.Nome),
+                "mais-recente" => query.OrderByDescending(p => p.Id),
+                _ => query.OrderBy(p => p.Id)
+            };
+
+            var totalCount = await query.CountAsync();
+
+            var produtos = await query
+                .Skip((pageNumber - 1) * pageSize)
+                .Take(pageSize)
+                .ToListAsync();
+
+            return (produtos.Select(p => p.ToResponseDto()).ToList(), totalCount);
+        }
+
         public async Task<IEnumerable<ProdutoResponseDto>> GetInactiveAsync()
         {
             var produtos = await _context.Produtos
@@ -405,6 +458,23 @@ namespace cafApi.Services
         {
             return await _context.Produtos
                 .FirstOrDefaultAsync(p => p.CodigoExterno == codigoExterno); // 🔹 Inclui produtos desativados
+        }
+
+        public async Task<IEnumerable<object>> GetCoresDisponiveisAsync()
+        {
+            var cores = await _context.ProdutosCores
+                .Where(pc => pc.Produtos.Active == true)
+                .Select(pc => new
+                {
+                    id = pc.Id,
+                    nome = pc.Nome,
+                    hex1 = pc.Hex1,
+                    hex2 = pc.Hex2
+                })
+                .Distinct()
+                .ToListAsync();
+
+            return cores;
         }
     }
 }

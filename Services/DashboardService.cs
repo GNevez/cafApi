@@ -354,5 +354,22 @@ namespace cafApi.Services
                 ? (couponUsage.TotalUsed, couponUsage.TotalDiscount) 
                 : (0, 0m);
         }
+
+        public async Task<decimal> GetReturnRateAsync()
+        {
+            var cutoffDate = DateTime.UtcNow.AddDays(-30);
+
+            var totalPedidos = await _context.Pedidos
+                .Where(p => p.DataPedido >= cutoffDate)
+                .CountAsync();
+
+            if (totalPedidos == 0) return 0m;
+
+            var totalDevolucoes = await _context.Devolucoes
+                .Where(d => d.DataCriacao >= cutoffDate && d.Status >= DevolucaoStatus.Solicitado)
+                .CountAsync();
+
+            return (decimal)totalDevolucoes / totalPedidos * 100m;
+        }
     }
 }

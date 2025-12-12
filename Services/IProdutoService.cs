@@ -8,6 +8,7 @@ namespace cafApi.Services
     public interface IProdutoService
     {
         Task<IEnumerable<ProdutoResponseDto>> GetAllAsync();
+        Task<(List<ProdutoResponseDto> produtos, int totalCount)> GetPaginatedAsync(int pageNumber, int pageSize, int? categoriaId = null, int? corId = null, decimal? precoMin = null, decimal? precoMax = null, string? ordenacao = null);
         Task<IEnumerable<ProdutoResponseDto>> GetInactiveAsync(); // 🔹 Listar produtos desativados
         Task<ProdutoResponseDto?> GetByIdAsync(int id);
         Task<ProdutoResponseDto?> GetBySlugAsync(string slug);
@@ -31,5 +32,6 @@ namespace cafApi.Services
         Task<Produtos?> GetBySKUIncludingInactiveAsync(string sku); // 🔹 Inclui produtos desativados
         Task<Produtos?> GetByCodigoExternoAsync(string codigoExterno);
         Task<Produtos?> GetByCodigoExternoIncludingInactiveAsync(string codigoExterno); // 🔹 Inclui produtos desativados
+        Task<IEnumerable<object>> GetCoresDisponiveisAsync();
     }
 }

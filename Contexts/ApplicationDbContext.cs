@@ -26,6 +26,9 @@ public class ApplicationDbContext : DbContext
     public DbSet<Transacao> Transacoes { get; set; }
     public DbSet<Devolucao> Devolucoes { get; set; }
     public DbSet<DevolucaoItem> DevolucaoItens { get; set; }
+    public DbSet<PrePostagem> PrePostagens { get; set; }
+    public DbSet<Rotulo> Rotulos { get; set; }
+    public DbSet<FilaImpressao> FilaImpressao { get; set; }
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
@@ -169,5 +172,27 @@ public class ApplicationDbContext : DbContext
             .WithMany(d => d.Itens)
             .HasForeignKey(di => di.DevolucaoId)
             .OnDelete(DeleteBehavior.Cascade);
+
+        // 🔹 PrePostagem → Pedido
+        modelBuilder.Entity<PrePostagem>()
+            .HasOne(pp => pp.Pedido)
+            .WithMany()
+            .HasForeignKey(pp => pp.PedidoId)
+            .OnDelete(DeleteBehavior.Restrict);
+
+        modelBuilder.Entity<PrePostagem>()
+            .Property(pp => pp.Peso)
+            .HasPrecision(10, 3);
+
+        modelBuilder.Entity<PrePostagem>()
+            .Property(pp => pp.ValorDeclarado)
+            .HasPrecision(10, 2);
+
+        // 🔹 Rotulo → Índice em IdRecibo
+        modelBuilder.Entity<Rotulo>()
+            .HasIndex(r => r.IdRecibo);
+
+        modelBuilder.Entity<Rotulo>()
+            .HasIndex(r => r.DataGeracao);
     }
 }

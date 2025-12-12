@@ -34,6 +34,8 @@ builder.Services.AddScoped<ITransacaoService, TransacaoService>();
 builder.Services.AddScoped<IDashboardService, DashboardService>();
 builder.Services.AddScoped<IPagarmeService, PagarmeService>();
 builder.Services.AddScoped<IGoogleAnalyticsService, GoogleAnalyticsService>();
+builder.Services.AddScoped<ICorreiosService, CorreiosService>();
+builder.Services.AddScoped<IRotuloAutomaticoService, RotuloAutomaticoService>();
 builder.Services.AddSingleton<IActiveClientsTracker, ActiveClientsTracker>();
 builder.Services.AddScoped<SeedService>();
 builder.Services.AddHttpClient(); // Necessário para PagarmeService
@@ -197,11 +199,23 @@ app.UseAuthorization();
 // 🛡️ Middleware para tratar acesso negado de forma segura
 app.UseMiddleware<AccessDeniedMiddleware>();
 
-// 🔹 Executar seed de dados iniciais
+// 🔹 Aplicar migrations automaticamente
 if (!app.Environment.IsEnvironment("DesignTime"))
 {
     using (var scope = app.Services.CreateScope())
     {
+        var context = scope.ServiceProvider.GetRequiredService<ApplicationDbContext>();
+
+        try
+        {
+            await context.Database.MigrateAsync();
+            Console.WriteLine("✓ Migrations aplicadas com sucesso");
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"❌ Erro ao aplicar migrations: {ex.Message}");
+        }
+
         var seedService = scope.ServiceProvider.GetRequiredService<SeedService>();
         await seedService.SeedAsync();
     }

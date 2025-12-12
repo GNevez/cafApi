@@ -171,17 +171,40 @@ namespace cafApi.Controller
                     bounceRate = await _googleAnalyticsService.GetBounceRateAsync();
 
                     // Historical data (last 7 days)
-                    var topProductsHistorical = await _googleAnalyticsService.GetTopViewedProductsHistoricalAsync(5);
-                    var topPagesHistorical = await _googleAnalyticsService.GetTopPagesHistoricalAsync(5);
+                    var topProductsHistorical = await _googleAnalyticsService.GetTopViewedProductsHistoricalAsync(15);
+                    var topPagesHistorical = await _googleAnalyticsService.GetTopPagesHistoricalAsync(15);
 
                     // Realtime data (last 30 minutes)
-                    var topProductsRealtime = await _googleAnalyticsService.GetTopViewedProductsRealtimeAsync(5);
-                    var topPagesRealtime = await _googleAnalyticsService.GetTopPagesRealtimeAsync(5);
+                    var topProductsRealtime = await _googleAnalyticsService.GetTopViewedProductsRealtimeAsync(15);
+                    var topPagesRealtime = await _googleAnalyticsService.GetTopPagesRealtimeAsync(15);
 
                     mostViewedProductsHistorical = topProductsHistorical.Select(p => new { productName = p.productName, views = p.views });
-                    mostAccessedPagesHistorical = topPagesHistorical.Select(p => new { pagePath = p.pagePath, views = p.views });
+
+                    // Separar path e title para páginas históricas
+                    mostAccessedPagesHistorical = topPagesHistorical.Select(p =>
+                    {
+                        var parts = p.pagePath.Split('|');
+                        return new
+                        {
+                            pagePath = parts[0],
+                            pageTitle = parts.Length > 1 ? parts[1] : parts[0],
+                            views = p.views
+                        };
+                    });
+
                     mostViewedProductsRealtime = topProductsRealtime.Select(p => new { productName = p.productName, views = p.views });
-                    mostAccessedPagesRealtime = topPagesRealtime.Select(p => new { pagePath = p.pagePath, views = p.views });
+
+                    // Separar path e title para páginas realtime
+                    mostAccessedPagesRealtime = topPagesRealtime.Select(p =>
+                    {
+                        var parts = p.pagePath.Split('|');
+                        return new
+                        {
+                            pagePath = parts[0],
+                            pageTitle = parts.Length > 1 ? parts[1] : parts[0],
+                            views = p.views
+                        };
+                    });
                 }
                 catch
                 {
@@ -207,13 +230,14 @@ namespace cafApi.Controller
             var lowPerformers = await _dashboardService.GetLowPerformingProductsAsync(5);
             var salesByCategory = await _dashboardService.GetSalesByCategoryAsync();
             var (totalCouponsUsed, totalDiscount) = await _dashboardService.GetCouponUsageAsync();
+            var returnRate = await _dashboardService.GetReturnRateAsync();
 
             return Ok(new
             {
                 topProducts = topProducts.Select(p => new { name = p.productName, quantity = p.quantity, revenue = p.revenue }),
                 lowPerformingProducts = lowPerformers.Select(p => new { name = p.productName, quantity = p.quantity }),
                 salesByCategory = salesByCategory.Select(c => new { category = c.categoryName, revenue = c.revenue }),
-                returnRate = 0m, // Requires return/refund tracking in orders
+                returnRate,
                 couponUsage = new { totalUsed = totalCouponsUsed, totalDiscount }
             });
         }

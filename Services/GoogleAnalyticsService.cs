@@ -169,11 +169,12 @@ public class GoogleAnalyticsService : IGoogleAnalyticsService
     {
         try
         {
-            // Realtime API only supports unifiedScreenName dimension
             var request = new RunRealtimeReportRequest
             {
                 Property = _propertyId,
-                Dimensions = { new Dimension { Name = "unifiedScreenName" } },
+                Dimensions = {
+                    new Dimension { Name = "unifiedScreenName" }
+                },
                 Metrics = { new Metric { Name = "screenPageViews" } },
                 OrderBys = { new OrderBy { Metric = new OrderBy.Types.MetricOrderBy { MetricName = "screenPageViews" }, Desc = true } },
                 Limit = limit
@@ -186,10 +187,10 @@ public class GoogleAnalyticsService : IGoogleAnalyticsService
             var result = new List<(string, long)>();
             foreach (var row in response.Rows)
             {
-                var pageName = row.DimensionValues[0].Value;
+                var pageTitle = row.DimensionValues[0].Value;
                 var views = long.Parse(row.MetricValues[0].Value);
-                Console.WriteLine($"[GoogleAnalytics] Realtime Page: {pageName}, Views: {views}");
-                result.Add((pageName, views));
+                Console.WriteLine($"[GoogleAnalytics] Realtime Page: {pageTitle}, Views: {views}");
+                result.Add(($"{pageTitle}|{pageTitle}", views));
             }
             return result;
         }
@@ -396,7 +397,10 @@ public class GoogleAnalyticsService : IGoogleAnalyticsService
             {
                 Property = _propertyId,
                 DateRanges = { new DateRange { StartDate = "30daysAgo", EndDate = "today" } },
-                Dimensions = { new Dimension { Name = "pagePath" } },
+                Dimensions = {
+                    new Dimension { Name = "pagePath" },
+                    new Dimension { Name = "pageTitle" }
+                },
                 Metrics = { new Metric { Name = "screenPageViews" } },
                 OrderBys = { new OrderBy { Metric = new OrderBy.Types.MetricOrderBy { MetricName = "screenPageViews" }, Desc = true } },
                 Limit = limit
@@ -410,9 +414,11 @@ public class GoogleAnalyticsService : IGoogleAnalyticsService
             foreach (var row in response.Rows)
             {
                 var pagePath = row.DimensionValues[0].Value;
+                var pageTitle = row.DimensionValues[1].Value;
                 var views = long.Parse(row.MetricValues[0].Value);
-                Console.WriteLine($"[GoogleAnalytics] Historical Page: {pagePath}, Views: {views}");
-                result.Add((pagePath, views));
+                Console.WriteLine($"[GoogleAnalytics] Historical Page: {pageTitle} ({pagePath}), Views: {views}");
+                // Retorna path|title concatenado para o frontend separar
+                result.Add(($"{pagePath}|{pageTitle}", views));
             }
             
             return result;

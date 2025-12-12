@@ -23,5 +23,6 @@ namespace cafApi.Services
         Task<List<(string productName, int quantity)>> GetLowPerformingProductsAsync(int limit = 5);
         Task<List<(string categoryName, decimal revenue)>> GetSalesByCategoryAsync();
         Task<(int totalUsed, decimal totalDiscount)> GetCouponUsageAsync();
+        Task<decimal> GetReturnRateAsync();
     }
 }

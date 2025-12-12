@@ -31,6 +31,35 @@ namespace cafApi.Controller
             return Ok(produtos);
         }
 
+        [HttpGet("paginated")]
+        public async Task<ActionResult<object>> GetPaginated(
+            [FromQuery] int pageNumber = 1,
+            [FromQuery] int pageSize = 12,
+            [FromQuery] int? categoriaId = null,
+            [FromQuery] int? corId = null,
+            [FromQuery] decimal? precoMin = null,
+            [FromQuery] decimal? precoMax = null,
+            [FromQuery] string? ordenacao = null)
+        {
+            if (pageNumber < 1) pageNumber = 1;
+            if (pageSize < 1) pageSize = 12;
+            if (pageSize > 50) pageSize = 50;
+
+            var (produtos, totalCount) = await _service.GetPaginatedAsync(pageNumber, pageSize, categoriaId, corId, precoMin, precoMax, ordenacao);
+            var totalPages = (int)Math.Ceiling(totalCount / (double)pageSize);
+
+            return Ok(new
+            {
+                produtos,
+                pageNumber,
+                pageSize,
+                totalCount,
+                totalPages,
+                hasPreviousPage = pageNumber > 1,
+                hasNextPage = pageNumber < totalPages
+            });
+        }
+
         [HttpGet("{id:int}")]
         public async Task<ActionResult<ProdutoResponseDto>> Get(int id)
         {
@@ -206,6 +235,13 @@ namespace cafApi.Controller
             var reativado = await _service.ReactivateAsync(id);
             if (!reativado) return NotFound();
             return Ok(new { message = $"Produto {id} reativado com sucesso" });
+        }
+
+        [HttpGet("cores-disponiveis")]
+        public async Task<ActionResult<IEnumerable<object>>> GetCoresDisponiveis()
+        {
+            var cores = await _service.GetCoresDisponiveisAsync();
+            return Ok(cores);
         }
     }
 }

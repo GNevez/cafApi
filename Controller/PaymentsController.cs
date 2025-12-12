@@ -14,13 +14,23 @@ public class PaymentsController : ControllerBase
 {
     private readonly IPedidoService _pedidoService;
     private readonly IPagarmeService _pagarmeService;
+    private readonly ICorreiosService _correiosService;
+    private readonly IRotuloAutomaticoService _rotuloAutomaticoService;
     private readonly ApplicationDbContext _context;
     private readonly IConfiguration _configuration;
 
-    public PaymentsController(IPedidoService pedidoService, IPagarmeService pagarmeService, ApplicationDbContext context, IConfiguration configuration)
+    public PaymentsController(
+        IPedidoService pedidoService,
+        IPagarmeService pagarmeService,
+        ICorreiosService correiosService,
+        IRotuloAutomaticoService rotuloAutomaticoService,
+        ApplicationDbContext context,
+        IConfiguration configuration)
     {
         _pedidoService = pedidoService;
         _pagarmeService = pagarmeService;
+        _correiosService = correiosService;
+        _rotuloAutomaticoService = rotuloAutomaticoService;
         _context = context;
         _configuration = configuration;
     }
@@ -475,6 +485,50 @@ public class PaymentsController : ControllerBase
                         carrinho.DataAtualizacao = DateTime.UtcNow;
                         await _context.SaveChangesAsync();
                         Console.WriteLine($"[Webhook] Cart finalized for order #{pedido.Id}");
+                    }
+
+                    // Gerar pré-postagem automaticamente nos Correios
+                    try
+                    {
+                        Console.WriteLine($"[Webhook] Generating pre-postagem for order #{pedido.Id}...");
+                        var prePostagem = await _correiosService.CriarPrePostagemParaPedidoAsync(pedido.Id);
+                        if (prePostagem != null && !string.IsNullOrEmpty(prePostagem.CodigoRastreamento))
+                        {
+                            Console.WriteLine($"[Webhook] Pre-postagem created successfully. Tracking code: {prePostagem.CodigoRastreamento}");
+
+                            // Buscar a pré-postagem do banco para obter todos os dados
+                            var prePostagemEntity = await _context.PrePostagens
+                                .FirstOrDefaultAsync(p => p.PedidoId == pedido.Id);
+
+                            if (prePostagemEntity != null)
+                            {
+                                // Gerar rótulo automaticamente
+                                Console.WriteLine($"[Webhook] Generating rotulo for order #{pedido.Id}...");
+                                var rotulo = await _rotuloAutomaticoService.GerarRotuloParaPedidoAsync(pedido.Id, prePostagemEntity);
+
+                                if (rotulo != null)
+                                {
+                                    Console.WriteLine($"[Webhook] Rotulo generated successfully. File: {rotulo.NomeArquivo}");
+
+                                    // Adicionar à fila de impressão
+                                    await _rotuloAutomaticoService.AdicionarFilaImpressaoAsync(rotulo, pedido.Id, pedido.CodigoPedido);
+                                    Console.WriteLine($"[Webhook] Rotulo added to print queue for order #{pedido.Id}");
+                                }
+                                else
+                                {
+                                    Console.WriteLine($"[Webhook] Failed to generate rotulo for order #{pedido.Id}");
+                                }
+                            }
+                        }
+                        else if (prePostagem != null && !string.IsNullOrEmpty(prePostagem.MensagemErro))
+                        {
+                            Console.WriteLine($"[Webhook] Pre-postagem error: {prePostagem.MensagemErro}");
+                        }
+                    }
+                    catch (Exception prePostagemEx)
+                    {
+                        // Não falhar o webhook se a pré-postagem falhar
+                        Console.WriteLine($"[Webhook] Error creating pre-postagem: {prePostagemEx.Message}");
                     }
                 }
                 else
