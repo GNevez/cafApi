@@ -29,6 +29,7 @@ public class ApplicationDbContext : DbContext
     public DbSet<PrePostagem> PrePostagens { get; set; }
     public DbSet<Rotulo> Rotulos { get; set; }
     public DbSet<FilaImpressao> FilaImpressao { get; set; }
+    public DbSet<NotaFiscal> NotasFiscais { get; set; }
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
@@ -194,5 +195,20 @@ public class ApplicationDbContext : DbContext
 
         modelBuilder.Entity<Rotulo>()
             .HasIndex(r => r.DataGeracao);
+
+        // 🔹 NotaFiscal → Pedido
+        modelBuilder.Entity<NotaFiscal>()
+            .HasOne(n => n.Pedido)
+            .WithMany()
+            .HasForeignKey(n => n.PedidoId)
+            .OnDelete(DeleteBehavior.Restrict);
+
+        modelBuilder.Entity<NotaFiscal>()
+            .HasIndex(n => n.ChaveAcesso)
+            .IsUnique();
+
+        modelBuilder.Entity<NotaFiscal>()
+            .Property(n => n.ValorTotal)
+            .HasPrecision(10, 2);
     }
 }

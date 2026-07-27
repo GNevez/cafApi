@@ -11,6 +11,10 @@ public class Carrinho
     public DateTime? DataAtualizacao { get; set; }
     public bool Ativo { get; set; } = true; // Soft delete
 
+    // Controle de recuperação de carrinho abandonado
+    public DateTime? EmailRecuperacaoEnviadoEm { get; set; }
+    public int EmailRecuperacaoCount { get; set; } = 0; // Quantos emails de recuperação foram enviados
+
     // Relacionamento com cliente (opcional - pode ser null para carrinhos anônimos)
     public int? ClienteId { get; set; }
     public Cliente? Cliente { get; set; }

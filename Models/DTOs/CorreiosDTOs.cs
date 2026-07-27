@@ -131,16 +131,42 @@ public static class ServicosCorreios
 {
     public static readonly List<ServicoCorreiosDto> Lista = new()
     {
+        // Serviços de Envio (Loja → Cliente)
         new() { Codigo = "03220", Nome = "SEDEX", Descricao = "Entrega expressa" },
         new() { Codigo = "03298", Nome = "PAC", Descricao = "Entrega econômica" },
         new() { Codigo = "03140", Nome = "SEDEX 10", Descricao = "Entrega até às 10h" },
         new() { Codigo = "03204", Nome = "SEDEX 12", Descricao = "Entrega até às 12h" },
         new() { Codigo = "03158", Nome = "SEDEX Hoje", Descricao = "Entrega no mesmo dia" },
+        
+        // Serviços de Logística Reversa (Cliente → Loja)
+        new() { Codigo = "03301", Nome = "PAC Reverso", Descricao = "Logística reversa econômica" },
+        new() { Codigo = "03247", Nome = "SEDEX Reverso", Descricao = "Logística reversa expressa" },
+        new() { Codigo = "03182", Nome = "SEDEX 10 Reverso", Descricao = "Logística reversa até às 10h" },
+        new() { Codigo = "03174", Nome = "SEDEX 12 Reverso", Descricao = "Logística reversa até às 12h" },
+        new() { Codigo = "03190", Nome = "SEDEX Hoje Reverso", Descricao = "Logística reversa no mesmo dia" },
+    };
+
+    // Mapeamento de serviço normal para reverso
+    public static readonly Dictionary<string, string> MapaServicoReverso = new()
+    {
+        { "03220", "03247" }, // SEDEX → SEDEX Reverso
+        { "03298", "03301" }, // PAC → PAC Reverso
+        { "03140", "03182" }, // SEDEX 10 → SEDEX 10 Reverso
+        { "03204", "03174" }, // SEDEX 12 → SEDEX 12 Reverso
+        { "03158", "03190" }, // SEDEX Hoje → SEDEX Hoje Reverso
     };
     
     public static string GetNome(string codigo)
     {
         return Lista.FirstOrDefault(s => s.Codigo == codigo)?.Nome ?? "Desconhecido";
+    }
+
+    /// <summary>
+    /// Converte código de serviço normal para o equivalente reverso
+    /// </summary>
+    public static string GetCodigoReverso(string codigoNormal)
+    {
+        return MapaServicoReverso.TryGetValue(codigoNormal, out var reverso) ? reverso : "03301"; // Default: PAC Reverso
     }
 }
 
@@ -365,4 +391,24 @@ public class ItemDeclaracaoConteudoDto
     public string? Conteudo { get; set; }
     public string? Quantidade { get; set; }
     public string? Valor { get; set; }
+}
+
+// DTO para resposta de Logística Reversa
+public class LogisticaReversaResponseDto
+{
+    public bool Sucesso { get; set; }
+    public string? CodigoObjeto { get; set; }           // Código de rastreamento/postagem
+    public string? IdPrePostagem { get; set; }          // ID da pré-postagem nos Correios
+    public string? NomeServico { get; set; }            // Ex: "PAC Reverso"
+    public DateTime? DataEmissao { get; set; }          // Data de criação
+    public DateTime? DataValidade { get; set; }         // Data limite para postagem
+    public int QuantidadeObjetos { get; set; } = 1;
+    public string? MensagemErro { get; set; }
+    public string? RespostaJson { get; set; }           // JSON completo para debug
+
+    // Dados do remetente (cliente que vai enviar)
+    public RemetenteDestinatarioDto? Remetente { get; set; }
+
+    // Dados do destinatário (loja que vai receber)
+    public RemetenteDestinatarioDto? Destinatario { get; set; }
 }

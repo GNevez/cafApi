@@ -6,6 +6,7 @@ using System.Text;
 using cafApi.Contexts;
 using cafApi.Services;
 using cafApi.Middleware;
+using cafApi.Models.DTOs;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -36,8 +37,25 @@ builder.Services.AddScoped<IPagarmeService, PagarmeService>();
 builder.Services.AddScoped<IGoogleAnalyticsService, GoogleAnalyticsService>();
 builder.Services.AddScoped<ICorreiosService, CorreiosService>();
 builder.Services.AddScoped<IRotuloAutomaticoService, RotuloAutomaticoService>();
+builder.Services.AddScoped<IEmailService, EmailService>();
+builder.Services.AddScoped<ICorreiosWebhookService, CorreiosWebhookService>();
+builder.Services.AddScoped<ICorreiosRastreamentoService, CorreiosRastreamentoService>();
+builder.Services.AddScoped<DanfeService>();
+builder.Services.AddScoped<INfeService, NfeService>();
 builder.Services.AddSingleton<IActiveClientsTracker, ActiveClientsTracker>();
 builder.Services.AddScoped<SeedService>();
+
+// 🔧 Configurações
+builder.Services.Configure<CorreiosConfig>(
+    builder.Configuration.GetSection("Correios"));
+
+builder.Services.Configure<CartAbandonmentConfig>(
+    builder.Configuration.GetSection("CartAbandonment"));
+
+// 🔄 Background Services
+builder.Services.AddHostedService<CorreiosPollingBackgroundService>();
+builder.Services.AddHostedService<CartAbandonmentBackgroundService>();
+
 builder.Services.AddHttpClient(); // Necessário para PagarmeService
 
 // 🔐 Configuração JWT
@@ -64,13 +82,21 @@ builder.Services.AddAuthorization();
 
 builder.Services.AddCors(options =>
 {
-    var devUrls = Environment.GetEnvironmentVariable("FRONTEND_DEVELOPMENT_URLS") 
-                  ?? builder.Configuration["Frontend:DevelopmentUrls"] 
-                  ?? "http://localhost:3000,http://localhost:3001";
-                  
-    var prodUrl = Environment.GetEnvironmentVariable("FRONTEND_PRODUCTION_URL") 
-                  ?? builder.Configuration["Frontend:ProductionUrl"] 
-                  ?? "https://chaseaflare.com.br";
+    var devUrls = Environment.GetEnvironmentVariable("FRONTEND_DEVELOPMENT_URLS")
+                  ?? builder.Configuration["Frontend:DevelopmentUrls"];
+
+    var prodUrl = Environment.GetEnvironmentVariable("FRONTEND_PRODUCTION_URL")
+                  ?? builder.Configuration["Frontend:ProductionUrl"];
+
+    if (string.IsNullOrEmpty(devUrls))
+    {
+        throw new InvalidOperationException("FRONTEND_DEVELOPMENT_URLS ou Frontend:DevelopmentUrls deve ser configurado.");
+    }
+
+    if (string.IsNullOrEmpty(prodUrl))
+    {
+        throw new InvalidOperationException("FRONTEND_PRODUCTION_URL ou Frontend:ProductionUrl deve ser configurado.");
+    }
 
     options.AddPolicy("Development", policy =>
     {

@@ -214,7 +214,14 @@ namespace cafApi.Services
             if (string.IsNullOrEmpty(imagePath))
                 return string.Empty;
 
-            var baseUrl = _configuration["BaseUrl"] ?? "https://localhost:5006";
+            var baseUrl = Environment.GetEnvironmentVariable("BACKEND_URL")
+                ?? _configuration["Backend:currSettingsUrl"];
+
+            if (string.IsNullOrEmpty(baseUrl))
+            {
+                throw new InvalidOperationException("BACKEND_URL ou Backend:currSettingsUrl deve ser configurado.");
+            }
+
             return $"{baseUrl}{imagePath}";
         }
 

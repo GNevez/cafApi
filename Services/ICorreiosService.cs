@@ -11,6 +11,9 @@ public interface ICorreiosService
     // Pré-Postagem
     Task<PrePostagemResponseDto?> CriarPrePostagemAsync(CriarPrePostagemDto dto);
     Task<PrePostagemResponseDto?> CriarPrePostagemParaPedidoAsync(int pedidoId, string? codigoServico = null);
+
+    // Logística Reversa (Devoluções)
+    Task<LogisticaReversaResponseDto?> CriarPrePostagemLogisticaReversaAsync(int devolucaoId, string? codigoServico = null);
     Task<PrePostagemResponseDto?> GetPrePostagemByIdAsync(int id);
     Task<PrePostagemResponseDto?> GetPrePostagemByPedidoIdAsync(int pedidoId);
     Task<PrePostagemPaginadoDto> GetPrePostagensAsync(PrePostagemFiltroDto filtro);

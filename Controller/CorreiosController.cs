@@ -2,7 +2,9 @@ using cafApi.Models;
 using cafApi.Models.DTOs;
 using cafApi.Services;
 using cafApi.Attributes;
+using cafApi.Contexts;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.EntityFrameworkCore;
 using System.Text.Json;
 
 namespace cafApi.Controller;
@@ -13,11 +15,13 @@ public class CorreiosController : ControllerBase
 {
     private readonly ICorreiosService _correiosService;
     private readonly ILogger<CorreiosController> _logger;
+    private readonly ApplicationDbContext _context;
 
-    public CorreiosController(ICorreiosService correiosService, ILogger<CorreiosController> logger)
+    public CorreiosController(ICorreiosService correiosService, ILogger<CorreiosController> logger, ApplicationDbContext context)
     {
         _correiosService = correiosService;
         _logger = logger;
+        _context = context;
     }
 
     #region Autenticação
@@ -179,6 +183,60 @@ public class CorreiosController : ControllerBase
     #endregion
 
     #region Rastreamento (SRO - Rastro)
+
+    /// <summary>
+    /// Rastreia um objeto pelo código de rastreamento ou código do pedido (público)
+    /// </summary>
+    [HttpGet("rastreamento/publico/{codigo}")]
+    public async Task<ActionResult<RastreamentoResponseDto>> RastrearObjetoPublico(string codigo)
+    {
+        if (string.IsNullOrWhiteSpace(codigo))
+        {
+            return BadRequest(new { error = "Código é obrigatório" });
+        }
+
+        string codigoRastreamento = codigo.ToUpper();
+
+        // Se o código começa com CAF-, buscar o código de rastreamento pelo pedido
+        if (codigo.ToUpper().StartsWith("CAF-"))
+        {
+            var pedido = await _context.Pedidos
+                .FirstOrDefaultAsync(p => p.CodigoPedido == codigo.ToUpper());
+
+            if (pedido == null)
+            {
+                return NotFound(new { error = "Pedido não encontrado" });
+            }
+
+            if (string.IsNullOrEmpty(pedido.CodigoRastreamento))
+            {
+                return Ok(new RastreamentoResponseDto
+                {
+                    CodigoObjeto = codigo.ToUpper(),
+                    Mensagem = "Pedido encontrado, mas ainda não possui código de rastreamento. Aguarde a postagem do seu pedido.",
+                    Eventos = new List<EventoRastreamentoDto>
+                    {
+                        new EventoRastreamentoDto
+                        {
+                            DataHora = pedido.DataPedido,
+                            Descricao = "Pedido realizado",
+                            Tipo = "Pedido",
+                            Unidade = "Chase a Flare"
+                        }
+                    }
+                });
+            }
+
+            codigoRastreamento = pedido.CodigoRastreamento;
+        }
+
+        var resultado = await _correiosService.RastrearObjetoAsync(codigoRastreamento);
+        if (resultado == null)
+        {
+            return NotFound(new { error = "Objeto não encontrado" });
+        }
+        return Ok(resultado);
+    }
 
     /// <summary>
     /// Rastreia um objeto pelo código de rastreamento

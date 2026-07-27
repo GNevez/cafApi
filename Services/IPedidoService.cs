@@ -7,9 +7,9 @@ namespace cafApi.Services
     {
         Task<PedidoDto?> GetByIdAsync(int id);
         Task<PedidoDto?> GetByCodigoPedidoAsync(string codigoPedido);
-        Task<(List<PedidoDto> pedidos, int totalCount)> GetAllAsync(int pageNumber, int pageSize);
+        Task<(List<PedidoDto> pedidos, int totalCount)> GetAllAsync(int pageNumber, int pageSize, string? busca = null);
         Task<List<PedidoDto>> GetByClienteIdAsync(int clienteId);
-        Task<(List<PedidoDto> pedidos, int totalCount)> GetByStatusAsync(StatusPedido status, int pageNumber, int pageSize);
+        Task<(List<PedidoDto> pedidos, int totalCount)> GetByStatusAsync(StatusPedido status, int pageNumber, int pageSize, string? busca = null);
         Task<List<PedidoDto>> GetByCpfAsync(string cpf);
         Task<PedidoDto> CreateAsync(CriarPedidoDto criarPedidoDto, string cartToken);
         Task<PedidoDto?> UpdateStatusAsync(int id, AtualizarStatusPedidoDto updateDto);

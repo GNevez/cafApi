@@ -291,6 +291,40 @@ public class PagarmePixTransaction
     public DateTime? ExpiresAt { get; set; }
 }
 
+// DTO para resposta de reembolso do Pagar.me
+public class PagarmeRefundResponse
+{
+    [JsonPropertyName("id")]
+    public string Id { get; set; } = string.Empty;
+
+    [JsonPropertyName("code")]
+    public string? Code { get; set; }
+
+    [JsonPropertyName("gateway_id")]
+    public string? GatewayId { get; set; }
+
+    [JsonPropertyName("amount")]
+    public int Amount { get; set; }
+
+    [JsonPropertyName("status")]
+    public string Status { get; set; } = string.Empty;
+
+    [JsonPropertyName("canceled_amount")]
+    public int CanceledAmount { get; set; }
+
+    [JsonPropertyName("paid_amount")]
+    public int PaidAmount { get; set; }
+
+    [JsonPropertyName("created_at")]
+    public DateTime CreatedAt { get; set; }
+
+    [JsonPropertyName("updated_at")]
+    public DateTime UpdatedAt { get; set; }
+
+    [JsonPropertyName("last_transaction")]
+    public PagarmeTransaction? LastTransaction { get; set; }
+}
+
 // DTO para webhook do Pagar.me
 public class PagarmeWebhookEvent
 {

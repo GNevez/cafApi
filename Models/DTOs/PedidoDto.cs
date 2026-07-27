@@ -84,5 +84,9 @@ namespace cafApi.Models.DTOs
         public string? CodigoRastreamento { get; set; }
         public string? Observacoes { get; set; }
         public string? MotivoCancelamento { get; set; }
+        /// <summary>
+        /// Define se deve enviar email de notificação ao cliente. Padrão: true
+        /// </summary>
+        public bool EnviarEmail { get; set; } = true;
     }
 }

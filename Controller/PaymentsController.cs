@@ -16,6 +16,7 @@ public class PaymentsController : ControllerBase
     private readonly IPagarmeService _pagarmeService;
     private readonly ICorreiosService _correiosService;
     private readonly IRotuloAutomaticoService _rotuloAutomaticoService;
+    private readonly INfeService _nfeService;
     private readonly ApplicationDbContext _context;
     private readonly IConfiguration _configuration;
 
@@ -24,6 +25,7 @@ public class PaymentsController : ControllerBase
         IPagarmeService pagarmeService,
         ICorreiosService correiosService,
         IRotuloAutomaticoService rotuloAutomaticoService,
+        INfeService nfeService,
         ApplicationDbContext context,
         IConfiguration configuration)
     {
@@ -31,6 +33,7 @@ public class PaymentsController : ControllerBase
         _pagarmeService = pagarmeService;
         _correiosService = correiosService;
         _rotuloAutomaticoService = rotuloAutomaticoService;
+        _nfeService = nfeService;
         _context = context;
         _configuration = configuration;
     }
@@ -60,21 +63,44 @@ public class PaymentsController : ControllerBase
             var descontoPorUnidade = checkoutData.DescontoPorUnidade ?? 0m;
             var subtotalComPromo = subtotal - descontoPorUnidade;
             
+            // Validar que o subtotal com desconto não seja negativo ou zero
+            if (subtotalComPromo <= 0)
+            {
+                return BadRequest(new { message = "O desconto aplicado é maior ou igual ao valor do carrinho. Não é possível processar o pagamento." });
+            }
+            
             var parcelasNum = checkoutData.ParcelasNum ?? 1;
             var cartMaxTaxa = cart.Itens.Any() ? cart.Itens.Max(i => i.Produto.TaxaJuros) : 0m;
             var taxaUsada = parcelasNum > 1 ? cartMaxTaxa : 0m;
             var totalComJuros = subtotalComPromo * (1 + taxaUsada);
             
+            // Validar que o total final seja positivo
+            if (totalComJuros <= 0 || total <= 0)
+            {
+                return BadRequest(new { message = "O valor total do pedido deve ser maior que zero." });
+            }
+            
             // Fator de ajuste para distribuir descontos/juros proporcionalmente nos itens
             var fatorAjuste = subtotal > 0 ? totalComJuros / subtotal : 1m;
 
             // Build Pagar.me order request com valores ajustados
-            var items = cart.Itens.Select(i => new PagarmeOrderItem
+            var items = cart.Itens.Select(i =>
             {
-                Code = i.Produto.SKU ?? i.ProdutoId.ToString(),
-                Description = i.Produto.Nome,
-                Amount = (int)(Math.Round(i.Produto.Preco * fatorAjuste, 2) * 100m),
-                Quantity = i.Quantidade
+                var itemAmount = (int)(Math.Round(i.Produto.Preco * fatorAjuste, 2) * 100m);
+                
+                // Garantir que o valor do item seja sempre positivo (mínimo 1 centavo)
+                if (itemAmount < 1)
+                {
+                    itemAmount = 1;
+                }
+                
+                return new PagarmeOrderItem
+                {
+                    Code = i.Produto.SKU ?? i.ProdutoId.ToString(),
+                    Description = i.Produto.Nome,
+                    Amount = itemAmount,
+                    Quantity = i.Quantidade
+                };
             }).ToList();
 
             // Extrair apenas dígitos do telefone
@@ -465,16 +491,7 @@ public class PaymentsController : ControllerBase
 
                 if (pedido != null)
                 {
-                    Console.WriteLine($"[Webhook] Found order #{pedido.Id}, updating status to EmSeparacao");
-                    
-                    var updateDto = new AtualizarStatusPedidoDto
-                    {
-                        Status = StatusPedido.EmSeparacao,
-                        Observacoes = $"Pagamento confirmado via Pagar.me ({eventType}: {pagarmeOrderId})"
-                    };
-
-                    await _pedidoService.UpdateStatusAsync(pedido.Id, updateDto);
-                    Console.WriteLine($"[Webhook] Order #{pedido.Id} ({pedido.CodigoPedido}) updated successfully");
+                    Console.WriteLine($"[Webhook] Found order #{pedido.Id}, processing payment confirmation...");
 
                     // Finalizar o carrinho agora que o pagamento foi confirmado
                     var carrinho = await _context.Carrinhos.FirstOrDefaultAsync(c => c.Id == pedido.CarrinhoId);
@@ -530,6 +547,45 @@ public class PaymentsController : ControllerBase
                         // Não falhar o webhook se a pré-postagem falhar
                         Console.WriteLine($"[Webhook] Error creating pre-postagem: {prePostagemEx.Message}");
                     }
+
+                    // Emitir NF-e automaticamente
+                    try
+                    {
+                        if (_nfeService.IsConfigured())
+                        {
+                            Console.WriteLine($"[Webhook] Emitting NF-e for order #{pedido.Id}...");
+                            var nfeResult = await _nfeService.EmitirNfeAsync(pedido.Id);
+
+                            if (nfeResult.Sucesso)
+                            {
+                                Console.WriteLine($"[Webhook] NF-e emitted successfully. Chave: {nfeResult.ChaveAcesso}");
+                            }
+                            else
+                            {
+                                Console.WriteLine($"[Webhook] NF-e emission failed: {nfeResult.Mensagem}");
+                            }
+                        }
+                        else
+                        {
+                            Console.WriteLine($"[Webhook] NF-e service not configured, skipping NF-e emission");
+                        }
+                    }
+                    catch (Exception nfeEx)
+                    {
+                        // Não falhar o webhook se a NF-e falhar
+                        Console.WriteLine($"[Webhook] Error emitting NF-e: {nfeEx.Message}");
+                    }
+
+                    // AGORA atualizar status para EmSeparacao (isso envia o email COM a NF-e já criada)
+                    Console.WriteLine($"[Webhook] Updating order #{pedido.Id} status to EmSeparacao...");
+                    var updateDto = new AtualizarStatusPedidoDto
+                    {
+                        Status = StatusPedido.EmSeparacao,
+                        Observacoes = $"Pagamento confirmado via Pagar.me ({eventType}: {pagarmeOrderId})"
+                    };
+
+                    await _pedidoService.UpdateStatusAsync(pedido.Id, updateDto);
+                    Console.WriteLine($"[Webhook] Order #{pedido.Id} ({pedido.CodigoPedido}) updated successfully - Email sent with NF-e");
                 }
                 else
                 {

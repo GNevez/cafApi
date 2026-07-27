@@ -8,6 +8,7 @@ public interface IPagarmeService
 {
     Task<PagarmeOrderResponse> CreateOrderAsync(PagarmeCreateOrderRequest request);
     Task<PagarmeOrderResponse> GetOrderAsync(string orderId);
+    Task<PagarmeRefundResponse> RefundChargeAsync(string chargeId, decimal amount);
     string GetPublicKey();
 }
 
@@ -123,6 +124,53 @@ public class PagarmeService : IPagarmeService
         catch (Exception ex)
         {
             Console.WriteLine($"[Pagarme] Error getting order: {ex.Message}");
+            throw;
+        }
+    }
+
+    public async Task<PagarmeRefundResponse> RefundChargeAsync(string chargeId, decimal amount)
+    {
+        try
+        {
+            Console.WriteLine($"[Pagarme] Refunding charge - ID: {chargeId}, Amount: R$ {amount:F2}");
+
+            var requestBody = new { amount = amount };
+            var jsonOptions = new JsonSerializerOptions
+            {
+                PropertyNamingPolicy = JsonNamingPolicy.SnakeCaseLower,
+                DefaultIgnoreCondition = System.Text.Json.Serialization.JsonIgnoreCondition.WhenWritingNull
+            };
+
+            var json = JsonSerializer.Serialize(requestBody, jsonOptions);
+            var request = new HttpRequestMessage(HttpMethod.Delete, $"{_baseEndpoint}/charges/{chargeId}")
+            {
+                Content = new StringContent(json, Encoding.UTF8, "application/json")
+            };
+
+            Console.WriteLine($"[Pagarme] Refund request body: {json}");
+
+            var response = await _httpClient.SendAsync(request);
+            var responseBody = await response.Content.ReadAsStringAsync();
+
+            Console.WriteLine($"[Pagarme] Refund response status: {response.StatusCode}");
+            Console.WriteLine($"[Pagarme] Refund response body: {responseBody}");
+
+            if (!response.IsSuccessStatusCode)
+            {
+                throw new HttpRequestException($"Erro ao realizar reembolso no Pagar.me: {response.StatusCode} - {responseBody}");
+            }
+
+            var refundResponse = JsonSerializer.Deserialize<PagarmeRefundResponse>(responseBody, jsonOptions);
+            if (refundResponse == null)
+            {
+                throw new InvalidOperationException("Resposta do Pagar.me inválida");
+            }
+
+            return refundResponse;
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"[Pagarme] Error refunding charge: {ex.Message}");
             throw;
         }
     }

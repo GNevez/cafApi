@@ -91,9 +91,32 @@ public class GoogleAnalyticsService : IGoogleAnalyticsService
             
             if (response.Rows.Count > 0)
             {
-                var bounceRate = double.Parse(response.Rows[0].MetricValues[0].Value);
-                Console.WriteLine($"[GoogleAnalytics] Bounce rate: {bounceRate}");
-                return (decimal)(bounceRate * 100); 
+                var rawValue = response.Rows[0].MetricValues[0].Value;
+                Console.WriteLine($"[GoogleAnalytics] Raw bounce rate value: {rawValue}");
+                
+                if (double.TryParse(rawValue, System.Globalization.NumberStyles.Any, System.Globalization.CultureInfo.InvariantCulture, out var bounceRate))
+                {
+                    // GA4 bounceRate já vem como valor entre 0 e 1 (ex: 0.45 = 45%)
+                    // Então multiplicamos por 100 para ter a porcentagem
+                    var percentage = bounceRate * 100;
+                    
+                    // Garantir que o valor está em um range válido (0-100)
+                    if (percentage > 100)
+                    {
+                        Console.WriteLine($"[GoogleAnalytics] Bounce rate > 100, assuming already percentage: {bounceRate}");
+                        percentage = bounceRate; // Já veio como porcentagem
+                    }
+                    
+                    // Limitar a 100% no máximo
+                    percentage = Math.Min(percentage, 100);
+                    
+                    Console.WriteLine($"[GoogleAnalytics] Final bounce rate: {percentage}%");
+                    return (decimal)percentage;
+                }
+                else
+                {
+                    Console.WriteLine($"[GoogleAnalytics] Failed to parse bounce rate: {rawValue}");
+                }
             }
             else
             {

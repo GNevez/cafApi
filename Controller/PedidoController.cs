@@ -17,14 +17,14 @@ public class PedidoController : ControllerBase
     }
 
     [HttpGet]
-    public async Task<ActionResult<object>> GetAll([FromQuery] int pageNumber = 1, [FromQuery] int pageSize = 7)
+    public async Task<ActionResult<object>> GetAll([FromQuery] int pageNumber = 1, [FromQuery] int pageSize = 7, [FromQuery] string? busca = null)
     {
         try
         {
             if (pageNumber < 1) pageNumber = 1;
             if (pageSize < 1 || pageSize > 100) pageSize = 7;
 
-            var (pedidos, totalCount) = await _pedidoService.GetAllAsync(pageNumber, pageSize);
+            var (pedidos, totalCount) = await _pedidoService.GetAllAsync(pageNumber, pageSize, busca);
 
             var response = new
             {
@@ -109,7 +109,7 @@ public class PedidoController : ControllerBase
     }
 
     [HttpGet("status/{status:int}")]
-    public async Task<ActionResult<object>> GetByStatus(int status, [FromQuery] int pageNumber = 1, [FromQuery] int pageSize = 7)
+    public async Task<ActionResult<object>> GetByStatus(int status, [FromQuery] int pageNumber = 1, [FromQuery] int pageSize = 7, [FromQuery] string? busca = null)
     {
         try
         {
@@ -121,7 +121,7 @@ public class PedidoController : ControllerBase
             if (pageNumber < 1) pageNumber = 1;
             if (pageSize < 1 || pageSize > 100) pageSize = 7;
 
-            var (pedidos, totalCount) = await _pedidoService.GetByStatusAsync((StatusPedido)status, pageNumber, pageSize);
+            var (pedidos, totalCount) = await _pedidoService.GetByStatusAsync((StatusPedido)status, pageNumber, pageSize, busca);
 
             var response = new
             {

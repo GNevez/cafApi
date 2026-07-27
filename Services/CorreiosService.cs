@@ -354,6 +354,254 @@ public class CorreiosService : ICorreiosService
         };
     }
 
+    #endregion
+
+    #region Logística Reversa (Devoluções)
+
+    /// <summary>
+    /// Cria uma pré-postagem de logística reversa para devolução.
+    /// O CLIENTE é o remetente (quem envia) e a LOJA é o destinatário (quem recebe).
+    /// Usa o MESMO serviço do envio original (PAC ou SEDEX) com flag logisticaReversa=S
+    /// </summary>
+    public async Task<LogisticaReversaResponseDto?> CriarPrePostagemLogisticaReversaAsync(int devolucaoId, string? codigoServico = null)
+    {
+        try
+        {
+            // Buscar devolução com relacionamentos
+            var devolucao = await _context.Devolucoes
+                .Include(d => d.Itens)
+                .Include(d => d.Pedido)
+                    .ThenInclude(p => p.Cliente)
+                .Include(d => d.Pedido)
+                    .ThenInclude(p => p.EnderecoEntrega)
+                .FirstOrDefaultAsync(d => d.Id == devolucaoId);
+
+            if (devolucao == null)
+            {
+                _logger.LogWarning("[Correios] Devolução {DevolucaoId} não encontrada", devolucaoId);
+                return new LogisticaReversaResponseDto { Sucesso = false, MensagemErro = "Devolução não encontrada" };
+            }
+
+            // Verificar se já existe código de postagem
+            if (!string.IsNullOrEmpty(devolucao.CodigoPostagem))
+            {
+                _logger.LogWarning("[Correios] Devolução {DevolucaoId} já possui código de postagem: {Codigo}",
+                    devolucaoId, devolucao.CodigoPostagem);
+                return new LogisticaReversaResponseDto
+                {
+                    Sucesso = true,
+                    CodigoObjeto = devolucao.CodigoPostagem,
+                    DataValidade = devolucao.DataLimitePostagem,
+                    MensagemErro = "Já existe autorização de postagem para esta devolução"
+                };
+            }
+
+            var pedido = devolucao.Pedido;
+            var enderecoCliente = pedido.EnderecoEntrega;
+
+            if (enderecoCliente == null)
+            {
+                _logger.LogError("[Correios] Devolução {DevolucaoId} - Pedido não possui endereço", devolucaoId);
+                return new LogisticaReversaResponseDto { Sucesso = false, MensagemErro = "Pedido não possui endereço de entrega" };
+            }
+
+            // Determinar código do serviço REVERSO:
+            // 1. Se foi passado explicitamente (já é reverso), usar ele
+            // 2. Buscar serviço da pré-postagem original e converter para o reverso equivalente
+            // 3. Default para PAC Reverso (03301)
+            var servicoFinal = codigoServico;
+            if (string.IsNullOrEmpty(servicoFinal))
+            {
+                // Buscar a pré-postagem original do pedido para usar o serviço reverso equivalente
+                var prePostagemOriginal = await _context.Set<PrePostagem>()
+                    .Where(p => p.PedidoId == pedido.Id && p.Status != StatusPrePostagem.Cancelada && p.Status != StatusPrePostagem.Erro)
+                    .OrderByDescending(p => p.DataCriacao)
+                    .FirstOrDefaultAsync();
+
+                if (prePostagemOriginal != null)
+                {
+                    // Converter serviço normal para reverso equivalente
+                    servicoFinal = ServicosCorreios.GetCodigoReverso(prePostagemOriginal.CodigoServico);
+                    _logger.LogInformation("[Correios] Serviço original: {Original} ({Nome}) → Reverso: {Reverso} ({NomeReverso})", 
+                        prePostagemOriginal.CodigoServico, prePostagemOriginal.NomeServico,
+                        servicoFinal, ServicosCorreios.GetNome(servicoFinal));
+                }
+                else
+                {
+                    // Default para PAC Reverso se não encontrar o original
+                    servicoFinal = "03301";
+                    _logger.LogInformation("[Correios] Pré-postagem original não encontrada, usando PAC Reverso (03301)");
+                }
+            }
+
+            // Criar objeto da pré-postagem para Logística Reversa
+            var prePostagemRequest = CriarRequestPrePostagemLogisticaReversa(devolucao, servicoFinal);
+
+            var request = await CriarRequestAutenticadoAsync(HttpMethod.Post, "/prepostagem/v1/prepostagens");
+            request.Content = new StringContent(
+                JsonSerializer.Serialize(prePostagemRequest, new JsonSerializerOptions { PropertyNamingPolicy = JsonNamingPolicy.CamelCase }),
+                Encoding.UTF8,
+                "application/json"
+            );
+
+            _logger.LogInformation("[Correios] Enviando pré-postagem LOGÍSTICA REVERSA para devolução {DevolucaoId} (Serviço: {Servico})...", 
+                devolucaoId, servicoFinal);
+
+            var response = await _httpClient.SendAsync(request);
+            var content = await response.Content.ReadAsStringAsync();
+
+            _logger.LogInformation("[Correios] Resposta logística reversa: {StatusCode} - {Content}", response.StatusCode, content);
+
+            var resultado = new LogisticaReversaResponseDto
+            {
+                RespostaJson = content,
+                DataEmissao = DateTime.UtcNow,
+                NomeServico = ServicosCorreios.GetNome(servicoFinal) + " (Reverso)",
+                QuantidadeObjetos = 1
+            };
+
+            if (response.IsSuccessStatusCode)
+            {
+                var responseData = JsonSerializer.Deserialize<JsonElement>(content);
+
+                if (responseData.TryGetProperty("codigoObjeto", out var codigoEl))
+                {
+                    resultado.CodigoObjeto = codigoEl.GetString();
+                }
+                if (responseData.TryGetProperty("id", out var idEl))
+                {
+                    resultado.IdPrePostagem = idEl.GetString();
+                }
+
+                // Data de validade: 30 dias a partir de hoje
+                resultado.DataValidade = DateTime.UtcNow.AddDays(30);
+                resultado.Sucesso = true;
+
+                _logger.LogInformation("[Correios] Logística reversa criada com sucesso. Código: {Codigo}", resultado.CodigoObjeto);
+            }
+            else
+            {
+                resultado.Sucesso = false;
+                resultado.MensagemErro = $"Erro {response.StatusCode}: {content}";
+                _logger.LogError("[Correios] Erro ao criar logística reversa: {Error}", resultado.MensagemErro);
+            }
+
+            return resultado;
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "[Correios] Erro ao criar logística reversa para devolução {DevolucaoId}", devolucaoId);
+            return new LogisticaReversaResponseDto
+            {
+                Sucesso = false,
+                MensagemErro = ex.Message
+            };
+        }
+    }
+
+    /// <summary>
+    /// Cria o request de pré-postagem para logística reversa.
+    /// Na logística reversa: CLIENTE é remetente, LOJA é destinatário (inverso do envio normal)
+    /// </summary>
+    private object CriarRequestPrePostagemLogisticaReversa(Devolucao devolucao, string codigoServico)
+    {
+        var pedido = devolucao.Pedido;
+        var enderecoCliente = pedido.EnderecoEntrega!;
+        var config = _configuration;
+
+        // Data de validade: 30 dias a partir de hoje
+        var dataValidade = DateTime.UtcNow.AddDays(30).ToString("dd/MM/yyyy");
+
+        // Telefone do cliente (REMETENTE na logística reversa) - separar DDD do número
+        var telefoneClienteRaw = pedido.Cliente?.Telefone?.Replace("(", "").Replace(")", "").Replace("-", "").Replace(" ", "") ?? "";
+        var dddCliente = telefoneClienteRaw.Length >= 2 ? telefoneClienteRaw.Substring(0, 2) : "";
+        var telefoneCliente = telefoneClienteRaw.Length > 2 ? telefoneClienteRaw.Substring(2) : "";
+        if (telefoneCliente.Length > 9) telefoneCliente = telefoneCliente.Substring(0, 9);
+
+        // Telefone da loja (DESTINATÁRIO na logística reversa) - separar DDD do número
+        var telefoneLojaRaw = config["Correios:RemetenteTelefone"]?.Replace("(", "").Replace(")", "").Replace("-", "").Replace(" ", "") ?? "";
+        var dddLoja = telefoneLojaRaw.Length >= 2 ? telefoneLojaRaw.Substring(0, 2) : "";
+        var telefoneLoja = telefoneLojaRaw.Length > 2 ? telefoneLojaRaw.Substring(2) : "";
+        if (telefoneLoja.Length > 9) telefoneLoja = telefoneLoja.Substring(0, 9);
+
+        // Quantidade e valor dos itens
+        var quantidadeItens = devolucao.Itens?.Sum(i => i.Quantidade) ?? 1;
+
+        return new
+        {
+            idCorreios = Guid.NewGuid().ToString(),
+
+            // REMETENTE = CLIENTE (quem vai enviar o produto de volta)
+            remetente = new
+            {
+                nome = devolucao.NomeCliente ?? pedido.Cliente?.Nome ?? "Cliente",
+                cpfCnpj = devolucao.Cpf?.Replace(".", "").Replace("-", "") ?? pedido.Cliente?.Cpf?.Replace(".", "").Replace("-", ""),
+                dddCelular = dddCliente,
+                celular = telefoneCliente,
+                email = devolucao.Email ?? pedido.Cliente?.Email,
+                endereco = new
+                {
+                    cep = enderecoCliente.Cep?.Replace("-", ""),
+                    logradouro = enderecoCliente.Logradouro,
+                    numero = enderecoCliente.Numero,
+                    complemento = enderecoCliente.Complemento ?? "",
+                    bairro = enderecoCliente.Bairro,
+                    cidade = enderecoCliente.Cidade,
+                    uf = enderecoCliente.Estado
+                }
+            },
+
+            // DESTINATÁRIO = LOJA (quem vai receber o produto de volta)
+            destinatario = new
+            {
+                nome = config["Correios:RemetenteNome"],
+                cpfCnpj = config["Correios:RemetenteCPFCNPJ"]?.Replace(".", "").Replace("-", "").Replace("/", ""),
+                dddCelular = dddLoja,
+                celular = telefoneLoja,
+                email = config["Correios:RemetenteEmail"],
+                endereco = new
+                {
+                    cep = config["Correios:RemetenteCEP"]?.Replace("-", ""),
+                    logradouro = config["Correios:RemetenteLogradouro"],
+                    numero = config["Correios:RemetenteNumero"],
+                    bairro = config["Correios:RemetenteBairro"],
+                    cidade = config["Correios:RemetenteCidade"],
+                    uf = config["Correios:RemetenteUF"]
+                }
+            },
+
+            codigoServico = codigoServico, // 04677 = PAC Reverso
+            numeroCartaoPostagem = config["Correios:CartaoPostagem"],
+            pesoInformado = "300", // 300g padrão para devolução
+            codigoFormatoObjetoInformado = "2", // 2 = Caixa/Pacote
+            alturaInformada = "5",
+            larguraInformada = "15",
+            comprimentoInformado = "20",
+            cienteObjetoNaoProibido = 1,
+
+            itensDeclaracaoConteudo = new[]
+            {
+                new
+                {
+                    conteudo = "Oculos e Acessorios - Devolucao",
+                    quantidade = quantidadeItens.ToString(),
+                    valor = "0.00" // Valor zero para devolução
+                }
+            },
+
+            observacao = $"Devolução #{devolucao.Id} - Pedido #{pedido.CodigoPedido}",
+
+            // CAMPOS ESPECÍFICOS DE LOGÍSTICA REVERSA
+            logisticaReversa = "S",
+            dataValidadeLogReversa = dataValidade,
+            prazoPostagem = dataValidade
+        };
+    }
+
+    #endregion
+
+    #region Pré-Postagem Consultas
+
     public async Task<PrePostagemResponseDto?> GetPrePostagemByIdAsync(int id)
     {
         var prePostagem = await _context.Set<PrePostagem>()

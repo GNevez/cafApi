@@ -155,7 +155,61 @@ public class CartController : ControllerBase
         }
         return Ok(cart);
     }
-    
+
+    [HttpPost("associate-client")]
+    public async Task<ActionResult<CarrinhoDto>> AssociateClient([FromBody] AssociateClientRequest request)
+    {
+        if (string.IsNullOrWhiteSpace(request.Email))
+        {
+            return BadRequest(new { message = "Email é obrigatório" });
+        }
+
+        var cartToken = Request.Cookies["cart_token"];
+        if (string.IsNullOrEmpty(cartToken))
+        {
+            return BadRequest(new { message = "Token do carrinho não encontrado" });
+        }
+
+        try
+        {
+            var cart = await _cartService.AssociateClientAsync(cartToken, request.Email.Trim(), request.Nome);
+            return Ok(cart);
+        }
+        catch (ArgumentException ex)
+        {
+            return BadRequest(new { message = ex.Message });
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"Erro ao associar cliente ao carrinho: {ex.Message}");
+            return StatusCode(500, new { message = "Erro interno ao associar cliente" });
+        }
+    }
+
+    [HttpGet("recover/{token}")]
+    public async Task<ActionResult<CarrinhoDto>> RecoverCart(string token)
+    {
+        try
+        {
+            var cart = await _cartService.RecoverCartAsync(token);
+
+            if (cart == null)
+            {
+                return NotFound(new { message = "Carrinho não encontrado ou não pode ser recuperado" });
+            }
+
+            // Definir o cookie com o token do carrinho recuperado
+            SetCartCookie(cart.Token);
+
+            return Ok(cart);
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"Erro ao recuperar carrinho: {ex.Message}");
+            return StatusCode(500, new { message = "Erro interno ao recuperar carrinho" });
+        }
+    }
+
 
     private void SetCartCookie(string cartToken)
     {
@@ -176,4 +230,10 @@ public class CartController : ControllerBase
 public class ApplyCouponRequest
 {
     public string Codigo { get; set; } = string.Empty;
+}
+
+public class AssociateClientRequest
+{
+    public string Email { get; set; } = string.Empty;
+    public string? Nome { get; set; }
 }

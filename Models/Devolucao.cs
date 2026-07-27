@@ -22,6 +22,18 @@ namespace cafApi.Models
         public DateTime DataCriacao { get; set; } = DateTime.UtcNow;
         public DateTime? DataAtualizacao { get; set; }
 
+        // Dados do Correios - Logística Reversa
+        public string? CodigoPostagem { get; set; }          // Código de autorização de postagem (gerado pelos Correios)
+        public string? CodigoRastreamento { get; set; }      // Código de rastreamento do envio
+        public DateTime? DataLimitePostagem { get; set; }    // Data limite para o cliente postar
+        public string? UrlEtiqueta { get; set; }             // URL da etiqueta para impressão (se aplicável)
+
+        // Dados do Reembolso - Pagar.me
+        public decimal? ValorReembolsado { get; set; }       // Valor reembolsado ao cliente
+        public DateTime? DataReembolso { get; set; }         // Data/hora do reembolso
+        public string? PagarmeChargeId { get; set; }         // ID da charge no Pagar.me
+        public string? PagarmeRefundStatus { get; set; }     // Status do reembolso retornado pelo Pagar.me
+
         public Pedido Pedido { get; set; } = null!;
         public ICollection<DevolucaoItem> Itens { get; set; } = new List<DevolucaoItem>();
     }

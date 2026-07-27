@@ -9,6 +9,14 @@ namespace cafApi.Attributes
     {
         public void OnAuthorization(AuthorizationFilterContext context)
         {
+            var allowAnonymous = context.ActionDescriptor.EndpointMetadata
+                .Any(m => m is IAllowAnonymous);
+
+            if (allowAnonymous)
+            {
+                return;
+            }
+
             var user = context.HttpContext.User;
             
             if (!user.Identity?.IsAuthenticated ?? true)

@@ -9,11 +9,16 @@ namespace cafApi.Services
     {
         private readonly ApplicationDbContext _context;
         private readonly ICartService _cartService;
+        private readonly IEmailService _emailService;
 
-        public PedidoService(ApplicationDbContext context, ICartService cartService)
+        public PedidoService(
+            ApplicationDbContext context,
+            ICartService cartService,
+            IEmailService emailService)
         {
             _context = context;
             _cartService = cartService;
+            _emailService = emailService;
         }
 
         public async Task<PedidoDto?> GetByIdAsync(int id)
@@ -52,10 +57,35 @@ namespace cafApi.Services
             return await MapPedidoToDto(pedido);
         }
 
-        public async Task<(List<PedidoDto> pedidos, int totalCount)> GetAllAsync(int pageNumber, int pageSize)
+        public async Task<(List<PedidoDto> pedidos, int totalCount)> GetAllAsync(int pageNumber, int pageSize, string? busca = null)
         {
             var baseQuery = _context.Pedidos
                 .AsNoTracking()
+                .AsQueryable();
+
+            // Filtro por busca (Id, CodigoPedido ou PagarmeOrderId)
+            if (!string.IsNullOrWhiteSpace(busca))
+            {
+                var buscaTrimmed = busca.Trim();
+                
+                if (int.TryParse(buscaTrimmed, out var pedidoId))
+                {
+                    baseQuery = baseQuery.Where(p => 
+                        p.Id == pedidoId ||
+                        p.CodigoPedido.Contains(buscaTrimmed) ||
+                        (p.PagarmeOrderId != null && p.PagarmeOrderId.Contains(buscaTrimmed))
+                    );
+                }
+                else
+                {
+                    baseQuery = baseQuery.Where(p => 
+                        p.CodigoPedido.Contains(buscaTrimmed) ||
+                        (p.PagarmeOrderId != null && p.PagarmeOrderId.Contains(buscaTrimmed))
+                    );
+                }
+            }
+
+            baseQuery = baseQuery
                 .OrderByDescending(p => p.DataPedido)
                 .ThenByDescending(p => p.Id); // desempate estável
 
@@ -123,11 +153,36 @@ namespace cafApi.Services
             return pedidosDto;
         }
 
-        public async Task<(List<PedidoDto> pedidos, int totalCount)> GetByStatusAsync(StatusPedido status, int pageNumber, int pageSize)
+        public async Task<(List<PedidoDto> pedidos, int totalCount)> GetByStatusAsync(StatusPedido status, int pageNumber, int pageSize, string? busca = null)
         {
             var baseQuery = _context.Pedidos
                 .AsNoTracking()
                 .Where(p => p.Status == status)
+                .AsQueryable();
+
+            // Filtro por busca (Id, CodigoPedido ou PagarmeOrderId)
+            if (!string.IsNullOrWhiteSpace(busca))
+            {
+                var buscaTrimmed = busca.Trim();
+                
+                if (int.TryParse(buscaTrimmed, out var pedidoId))
+                {
+                    baseQuery = baseQuery.Where(p => 
+                        p.Id == pedidoId ||
+                        p.CodigoPedido.Contains(buscaTrimmed) ||
+                        (p.PagarmeOrderId != null && p.PagarmeOrderId.Contains(buscaTrimmed))
+                    );
+                }
+                else
+                {
+                    baseQuery = baseQuery.Where(p => 
+                        p.CodigoPedido.Contains(buscaTrimmed) ||
+                        (p.PagarmeOrderId != null && p.PagarmeOrderId.Contains(buscaTrimmed))
+                    );
+                }
+            }
+
+            baseQuery = baseQuery
                 .OrderByDescending(p => p.DataPedido)
                 .ThenByDescending(p => p.Id); // desempate estável
 
@@ -385,6 +440,16 @@ namespace cafApi.Services
 
             await _context.SaveChangesAsync();
 
+            // Enviar email de atualização de status somente se solicitado
+            if (statusAnterior != updateDto.Status && updateDto.EnviarEmail)
+            {
+                await _emailService.EnviarEmailStatusPedidoAsync(
+                    pedido,
+                    updateDto.Status,
+                    updateDto.Observacoes ?? updateDto.MotivoCancelamento
+                );
+            }
+
             // Se mudou para EmSeparacao e ainda não registramos uma ENTRADA de venda para esse pedido, cria a transação
             if (statusAnterior != StatusPedido.EmSeparacao && updateDto.Status == StatusPedido.EmSeparacao)
             {
@@ -425,6 +490,15 @@ namespace cafApi.Services
             pedido.DataAtualizacao = DateTime.UtcNow;
 
             await _context.SaveChangesAsync();
+
+            if (statusAnterior != updateDto.Status && updateDto.EnviarEmail)
+            {
+                await _emailService.EnviarEmailStatusPedidoAsync(
+                    pedido,
+                    updateDto.Status,
+                    updateDto.Observacoes ?? updateDto.MotivoCancelamento
+                );
+            }
 
             if (statusAnterior != StatusPedido.EmSeparacao && updateDto.Status == StatusPedido.EmSeparacao)
             {
