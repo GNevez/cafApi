@@ -1539,9 +1539,9 @@ public class NfeService : INfeService
         
         var backendUrl = _configuration["Backend:currSettingsUrl"];
         var frontendUrl = _configuration["Frontend:currSettingsUrl"];
-        var contactEmail = _configuration["Email:ContactEmail"] ?? "contato@chaseaflare.com.br";
-        var instagramUrl = _configuration["Email:Instagram"] ?? "https://instagram.com/chaseaflare";
-        var tiktokUrl = _configuration["Email:TikTok"] ?? "https://tiktok.com/@chaseaflare";
+        var contactEmail = _configuration["Email:ContactEmail"] ?? "";
+        var instagramUrl = _configuration["Email:Instagram"] ?? "";
+        var tiktokUrl = _configuration["Email:TikTok"] ?? "";
         var logoUrl = $"{backendUrl}/chaseaflare/CAFLONG.png";
         
         var pedidoSection = pedido != null ? $@"

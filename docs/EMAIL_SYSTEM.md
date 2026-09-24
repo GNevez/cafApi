@@ -179,5 +179,5 @@ Para testar o envio de emails:
 ## 📞 Suporte
 
 Para dúvidas sobre configuração:
-- Email: contato@chaseaflare.com.br
+- Email: contato@example.com
 - Documentação SMTP do seu provedor

@@ -101,23 +101,23 @@ export NFE_ENCRYPTION_KEY=xyz789...
         "CfopDentroEstado": "5102",  // Venda dentro do estado
         "CfopForaEstado": "6102",  // Venda fora do estado
         "Emitente": {
-            "Cnpj": "REMOVED_CNPJ",
-            "InscricaoEstadual": "0123456789012",
-            "RazaoSocial": "CHASE A FLARE COMERCIO DE ACESSORIOS LTDA",
-            "NomeFantasia": "Chase a Flare",
+            "Cnpj": "SEU_CNPJ",
+            "InscricaoEstadual": "SUA_INSCRICAO_ESTADUAL",
+            "RazaoSocial": "SUA_RAZAO_SOCIAL",
+            "NomeFantasia": "SUA_MARCA",
             "RegimeTributario": 1,  // 1 = Simples Nacional
             "CnaePrincipal": "4789099",
-            "Logradouro": "REMOVED_STREET",
-            "Numero": "76",
+            "Logradouro": "SEU_LOGRADOURO",
+            "Numero": "SEU_NUMERO",
             "Complemento": "",
-            "Bairro": "REMOVED_DISTRICT",
+            "Bairro": "SEU_BAIRRO",
             "CodigoMunicipio": "5300108",  // Código IBGE de Brasília
             "NomeMunicipio": "Brasília",
-            "UF": "DF",
-            "Cep": "REMOVED_POSTAL_CODE",
+            "UF": "UF",
+            "Cep": "SEU_CEP",
             "CodigoPais": "1058",
             "NomePais": "Brasil",
-            "Telefone": "REMOVED_PHONE"
+            "Telefone": "SEU_TELEFONE"
         },
         "Certificado": {
             "CaminhoArquivo": "credentials/certificado.pfx",

@@ -1,3 +1,15 @@
 /wwwroot/
-/bin
-/obj
+**/bin/
+**/obj/
+.vs/
+*.user
+
+# Configuracoes e credenciais locais
+.env
+.env.*
+!.env.example
+credentials/
+*.pfx
+*.p12
+*.pem
+*.key

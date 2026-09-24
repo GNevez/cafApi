@@ -7,7 +7,9 @@ using cafApi.Contexts;
 using cafApi.Services;
 using cafApi.Middleware;
 using cafApi.Models.DTOs;
+using cafApi.Configuration;
 
+DotEnv.Load(Path.Combine(Directory.GetCurrentDirectory(), ".env"));
 var builder = WebApplication.CreateBuilder(args);
 
 // Configurar WebRootPath se não estiver definido
@@ -15,8 +17,8 @@ var builder = WebApplication.CreateBuilder(args);
 
 builder.Services.AddDbContext<ApplicationDbContext>(options =>
     options.UseMySql(
-        Environment.GetEnvironmentVariable("CONNECTION_STRING") 
-        ?? builder.Configuration.GetConnectionString("DefaultConnection"),
+        builder.Configuration.GetConnectionString("DefaultConnection")
+        ?? throw new InvalidOperationException("ConnectionStrings__DefaultConnection deve ser configurada."),
         new MySqlServerVersion(new Version(8, 0, 36))
     )
 );
@@ -62,8 +64,8 @@ builder.Services.AddHttpClient(); // Necessário para PagarmeService
 builder.Services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
     .AddJwtBearer(options =>
     {
-        var jwtKey = Environment.GetEnvironmentVariable("JWT_KEY") 
-                     ?? builder.Configuration["Jwt:Key"]!;
+        var jwtKey = builder.Configuration["Jwt:Key"]
+                     ?? throw new InvalidOperationException("Jwt__Key deve ser configurada.");
                      
         options.TokenValidationParameters = new TokenValidationParameters
         {
@@ -82,20 +84,18 @@ builder.Services.AddAuthorization();
 
 builder.Services.AddCors(options =>
 {
-    var devUrls = Environment.GetEnvironmentVariable("FRONTEND_DEVELOPMENT_URLS")
-                  ?? builder.Configuration["Frontend:DevelopmentUrls"];
+    var devUrls = builder.Configuration["Frontend:DevelopmentUrls"];
 
-    var prodUrl = Environment.GetEnvironmentVariable("FRONTEND_PRODUCTION_URL")
-                  ?? builder.Configuration["Frontend:ProductionUrl"];
+    var prodUrl = builder.Configuration["Frontend:ProductionUrl"];
 
     if (string.IsNullOrEmpty(devUrls))
     {
-        throw new InvalidOperationException("FRONTEND_DEVELOPMENT_URLS ou Frontend:DevelopmentUrls deve ser configurado.");
+        throw new InvalidOperationException("Frontend__DevelopmentUrls deve ser configurado.");
     }
 
     if (string.IsNullOrEmpty(prodUrl))
     {
-        throw new InvalidOperationException("FRONTEND_PRODUCTION_URL ou Frontend:ProductionUrl deve ser configurado.");
+        throw new InvalidOperationException("Frontend__ProductionUrl deve ser configurado.");
     }
 
     options.AddPolicy("Development", policy =>

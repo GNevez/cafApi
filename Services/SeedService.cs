@@ -8,10 +8,17 @@ namespace cafApi.Services
     public class SeedService
     {
         private readonly ApplicationDbContext _context;
+        private readonly IConfiguration _configuration;
+        private readonly ILogger<SeedService> _logger;
 
-        public SeedService(ApplicationDbContext context)
+        public SeedService(
+            ApplicationDbContext context,
+            IConfiguration configuration,
+            ILogger<SeedService> logger)
         {
             _context = context;
+            _configuration = configuration;
+            _logger = logger;
         }
 
         public async Task SeedAsync()
@@ -37,11 +44,21 @@ namespace cafApi.Services
             await _context.SaveChangesAsync();
 
             // Criar usuário administrador padrão
+            var adminEmail = _configuration["Seed:AdminEmail"];
+            var adminPassword = _configuration["Seed:AdminPassword"];
+
+            if (string.IsNullOrWhiteSpace(adminEmail) || string.IsNullOrWhiteSpace(adminPassword))
+            {
+                _logger.LogWarning(
+                    "Administrador inicial nao criado. Configure Seed__AdminEmail e Seed__AdminPassword.");
+                return;
+            }
+
             var adminUser = new Usuario
             {
                 Nome = "Administrador",
-                Email = "admin@chaseaflare.com.br",
-                Senha = HashPassword("REMOVED_DEFAULT_PASSWORD"),
+                Email = adminEmail,
+                Senha = HashPassword(adminPassword),
                 RoleId = adminRole.Id,
                 DataCriacao = DateTime.UtcNow,
                 Ativo = true

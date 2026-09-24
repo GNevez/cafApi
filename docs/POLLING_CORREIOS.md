@@ -53,9 +53,9 @@ O serviço `CorreiosPollingBackgroundService` roda em background e:
   "CorreiosPolling": {
     "IntervaloMinutos": 20,
     "BaseUrl": "https://api.correios.com.br",
-    "Usuario": "REMOVED_CNPJ",
+    "Usuario": "SEU_USUARIO",
     "Token": "seu_token_aqui",
-    "Cartao": "REMOVED_POSTING_CARD",
+    "Cartao": "SEU_CARTAO_POSTAGEM",
     "HabilitarPolling": true
   }
 }

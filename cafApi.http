@@ -16,8 +16,8 @@ POST {{cafApi_HostAddress}}/api/auth/login
 Content-Type: application/json
 
 {
-  "email": "admin@chaseaflare.com.br",
-  "senha": "REMOVED_DEFAULT_PASSWORD"
+  "email": "admin@example.com",
+  "senha": "CHANGE_ME"
 }
 
 ###
@@ -28,8 +28,8 @@ Content-Type: application/json
 
 {
   "nome": "Administrador",
-  "email": "admin@chaseaflare.com.br",
-  "senha": "REMOVED_DEFAULT_PASSWORD"
+  "email": "admin@example.com",
+  "senha": "CHANGE_ME"
 }
 
 ###
